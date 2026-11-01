@@ -105,10 +105,10 @@ h2.sec{font-family:var(--display);font-weight:600;font-size:1.15rem;margin:22px 
 /* colored-dot cluster — one dot per issue on a zone */
 .dots{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-wrap:wrap;
   gap:3px;justify-content:center;align-items:center;max-width:84%;pointer-events:none}
-.dot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 0 2px var(--bg)}
-.dot.breakout{background:#e58a8a}.dot.spot{background:#e3a867}.dot.dryness{background:#7fbcc6}
-.dot.oiliness{background:#e8d06a}.dot.redness{background:#e08fc0}.dot.congestion{background:#9aa6c4}
-.dot.flaking{background:#c3abe6}
+.idot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 0 2px var(--bg)}
+.idot.breakout{background:#e58a8a}.idot.spot{background:#e3a867}.idot.dryness{background:#7fbcc6}
+.idot.oiliness{background:#e8d06a}.idot.redness{background:#e08fc0}.idot.congestion{background:#9aa6c4}
+.idot.flaking{background:#c3abe6}
 /* type picker — header + multi-select chips */
 .typepick{margin-top:10px}
 .typepick[hidden]{display:none}
@@ -267,16 +267,35 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
     <div class="card">
       <div class="facewrap" id="facemap">
         <img src="clay-face.webp" alt="Face map — tap a zone to log how your skin is there" width="480" height="825">
-        <button class="zone" data-z="forehead" aria-label="Forehead" style="left:48%;top:17%;width:46%;height:20%"></button>
-        <button class="zone" data-z="nose"     aria-label="Nose"     style="left:49%;top:42%;width:15%;height:22%"></button>
-        <button class="zone" data-z="lcheek"   aria-label="Left cheek"  style="left:30%;top:48%;width:22%;height:18%"></button>
-        <button class="zone" data-z="rcheek"   aria-label="Right cheek" style="left:68%;top:48%;width:22%;height:18%"></button>
-        <button class="zone" data-z="chin"     aria-label="Chin and jaw" style="left:49%;top:67%;width:26%;height:15%"></button>
+        <!-- ordered background→foreground so small inner zones win taps where regions overlap -->
+        <button class="zone" data-z="neck"      aria-label="Neck"         style="left:49%;top:87%;width:32%;height:13%"></button>
+        <button class="zone" data-z="forehead"  aria-label="Forehead"     style="left:48%;top:15%;width:30%;height:13%"></button>
+        <button class="zone" data-z="ltemple"   aria-label="Left temple"  style="left:28%;top:26%;width:12%;height:12%"></button>
+        <button class="zone" data-z="rtemple"   aria-label="Right temple" style="left:70%;top:26%;width:12%;height:12%"></button>
+        <button class="zone" data-z="lcheek"    aria-label="Left cheek"   style="left:31%;top:51%;width:16%;height:13%"></button>
+        <button class="zone" data-z="rcheek"    aria-label="Right cheek"  style="left:67%;top:51%;width:16%;height:13%"></button>
+        <button class="zone" data-z="ljaw"      aria-label="Left jaw"     style="left:31%;top:63%;width:13%;height:12%"></button>
+        <button class="zone" data-z="rjaw"      aria-label="Right jaw"    style="left:67%;top:63%;width:13%;height:12%"></button>
+        <button class="zone" data-z="chin"      aria-label="Chin"         style="left:49%;top:70%;width:19%;height:9%"></button>
+        <button class="zone" data-z="nose"      aria-label="Nose"         style="left:49%;top:45%;width:11%;height:15%"></button>
+        <button class="zone" data-z="lundereye" aria-label="Left under-eye"  style="left:36%;top:42%;width:12%;height:7%"></button>
+        <button class="zone" data-z="rundereye" aria-label="Right under-eye" style="left:62%;top:42%;width:12%;height:7%"></button>
+        <button class="zone" data-z="lsmile"    aria-label="Left smile line"  style="left:41%;top:56%;width:9%;height:10%"></button>
+        <button class="zone" data-z="rsmile"    aria-label="Right smile line" style="left:57%;top:56%;width:9%;height:10%"></button>
+        <button class="zone" data-z="uplip"     aria-label="Upper lip"    style="left:49%;top:61%;width:13%;height:6%"></button>
+        <button class="zone" data-z="glabella"  aria-label="Glabella (between brows)" style="left:49%;top:31%;width:8%;height:7%"></button>
       </div>
       <div class="typepick" id="typepick" hidden>
-        <button class="breakout" data-t="breakout">Breakout</button>
-        <button class="spot" data-t="spot">Dark spot</button>
-        <button class="dryness" data-t="dryness">Dryness</button>
+        <div class="tp-head"><span id="tp-zone">Zone</span><button class="tp-done" id="tp-done">Done</button></div>
+        <div class="tp-chips">
+          <button class="breakout" data-t="breakout">Breakout</button>
+          <button class="spot" data-t="spot">Dark spot</button>
+          <button class="dryness" data-t="dryness">Dryness</button>
+          <button class="oiliness" data-t="oiliness">Oiliness</button>
+          <button class="redness" data-t="redness">Redness</button>
+          <button class="congestion" data-t="congestion">Congestion</button>
+          <button class="flaking" data-t="flaking">Flaking</button>
+        </div>
       </div>
       <p class="muted small" style="text-align:center;margin:10px 0 0">How did skin feel today?</p>
       <div class="score" id="score">
@@ -788,31 +807,61 @@ function renderShelf(){
 function packCatalog(){ return [...PRODUCTS, ...(S.customProducts||[]).map(c=>c.name)].filter(n=>!isOff(n)); }
 
 /* ---------- check-in ---------- */
+const ZONE_LABELS = {forehead:'Forehead', glabella:'Glabella (between brows)', ltemple:'Left temple',
+  rtemple:'Right temple', lundereye:'Left under-eye', rundereye:'Right under-eye', nose:'Nose',
+  lcheek:'Left cheek', rcheek:'Right cheek', lsmile:'Left smile line', rsmile:'Right smile line',
+  uplip:'Upper lip', chin:'Chin', ljaw:'Left jaw', rjaw:'Right jaw', neck:'Neck'};
+const TYPE_LABELS = {breakout:'Breakout', spot:'Dark spot', dryness:'Dryness', oiliness:'Oiliness',
+  redness:'Redness', congestion:'Congestion', flaking:'Flaking'};
 let ciDraft = null, ciZone = null;
-function loadCIDraft(){ const k=todayKey(); ciDraft = JSON.parse(JSON.stringify(S.checkins[k]||{zones:{},score:0,note:''})); }
+function loadCIDraft(){ const k=todayKey(); ciDraft = JSON.parse(JSON.stringify(S.checkins[k]||{zones:{},score:0,note:''}));
+  const z = ciDraft.zones||{};                                   // migrate: one-issue string -> array
+  for(const key in z){ z[key] = typeof z[key]==='string' ? [z[key]] : (Array.isArray(z[key])?z[key]:[]); }
+  ciDraft.zones = z;
+}
+function paintZone(z){                                            // draw a zone's "on" ring + colored-dot cluster
+  const arr = ciDraft.zones[z.dataset.z] || [];
+  z.classList.toggle('on', arr.length>0);
+  let d = z.querySelector('.dots'); if(!d){ d=document.createElement('span'); d.className='dots'; z.appendChild(d); }
+  d.innerHTML = arr.map(t=>'<i class="idot '+t+'"></i>').join('');
+  const names = arr.map(t=>TYPE_LABELS[t]).join(', ');
+  z.setAttribute('aria-label', ZONE_LABELS[z.dataset.z] + (names?(': '+names):''));
+}
+function renderCIZones(){ $$('#facemap .zone').forEach(paintZone); }
+function openPicker(zoneId){
+  ciZone = zoneId;
+  $('#tp-zone').textContent = ZONE_LABELS[zoneId];
+  const arr = ciDraft.zones[zoneId] || [];
+  $$('#typepick .tp-chips button').forEach(b=>{ const on=arr.includes(b.dataset.t);
+    b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); });
+  $('#typepick').hidden=false;
+  $$('#facemap .zone').forEach(z=>z.classList.toggle('sel', z.dataset.z===zoneId));
+}
+function closePicker(){ $('#typepick').hidden=true; ciZone=null; $$('#facemap .zone').forEach(z=>z.classList.remove('sel')); }
 function renderCheckin(){
   loadCIDraft();
-  $$('#facemap .zone').forEach(z=>{ const zn=z.dataset.z, v=ciDraft.zones[zn];
-    z.classList.remove('on','breakout','spot','dryness'); if(v){ z.classList.add('on',v); } });
-  $('#typepick').hidden=true; ciZone=null;
+  renderCIZones();
+  closePicker();
   $$('#score button').forEach(b=>b.classList.toggle('on', +b.dataset.v===ciDraft.score));
   $('#note').value=ciDraft.note||'';
   const existed=!!S.checkins[todayKey()]; $('#save-ci').textContent = existed?'Update check-in':'Save check-in';
 }
 function bindCheckin(){
-  $$('#facemap .zone').forEach(z=>z.onclick=()=>{ ciZone=z.dataset.z; const tp=$('#typepick'); tp.hidden=false;
-    $$('#typepick button').forEach(b=>b.classList.toggle('sel', ciDraft.zones[ciZone]===b.dataset.t)); });
-  $$('#typepick button').forEach(b=>b.onclick=()=>{ if(!ciZone) return;
-    if(ciDraft.zones[ciZone]===b.dataset.t) delete ciDraft.zones[ciZone]; else ciDraft.zones[ciZone]=b.dataset.t;
-    renderCIZones(); $('#typepick').hidden=true; });
+  $$('#facemap .zone').forEach(z=>z.onclick=()=>{ if(ciZone===z.dataset.z) closePicker(); else openPicker(z.dataset.z); });
+  $('#tp-done').onclick=closePicker;
+  $$('#typepick .tp-chips button').forEach(b=>b.onclick=()=>{ if(!ciZone) return;
+    const arr = ciDraft.zones[ciZone] || (ciDraft.zones[ciZone]=[]);
+    const i = arr.indexOf(b.dataset.t); if(i>=0) arr.splice(i,1); else arr.push(b.dataset.t);
+    if(arr.length===0) delete ciDraft.zones[ciZone];
+    const on = !!(ciDraft.zones[ciZone] && ciDraft.zones[ciZone].includes(b.dataset.t));
+    b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on);
+    paintZone($('#facemap .zone[data-z="'+ciZone+'"]')); });
   $$('#score button').forEach(b=>b.onclick=()=>{ ciDraft.score=+b.dataset.v;
     $$('#score button').forEach(x=>x.classList.toggle('on',x===b)); });
   $('#note').oninput=e=>ciDraft.note=e.target.value;
   $('#save-ci').onclick=()=>{ ciDraft.ts=Date.now(); S.checkins[todayKey()]=ciDraft; save(); renderTrends();
     $('#save-ci').textContent='Saved ✓'; setTimeout(()=>go('trends'),500); };
 }
-function renderCIZones(){ $$('#facemap .zone').forEach(z=>{ const v=ciDraft.zones[z.dataset.z];
-  z.classList.remove('on','breakout','spot','dryness'); if(v) z.classList.add('on',v); }); }
 
 /* ---------- trends ---------- */
 function renderTrends(){
