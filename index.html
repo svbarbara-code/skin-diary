@@ -1,0 +1,553 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><title>Skin Diary</title>
+<meta name="apple-mobile-web-app-title" content="Skin Diary">
+<meta name="theme-color" content="#17151c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Skin Diary — a dark, big-touch, offline-first bathroom PWA. One phone column, tab bar at the bottom.
+   All state lives in localStorage on the device. Single dark theme by design (bathroom, morning + night). */
+:root{
+  --bg:#17151c; --surface:#211d27; --surface2:#2b2531; --ink:#efe9ee; --muted:#b1a7b2; --faint:#857c88;
+  --line:#352e3a; --rose:#e0968f; --rose-soft:#372429; --teal:#7fbcc6; --teal-soft:#1e2e33;
+  --kit:#c3abe6; --kit-soft:#2d2440; --add:#a9cb9d; --add-soft:#242e1f; --warn:#e3a867; --warn-soft:#352813;
+  --ok:#8fcf9a; --danger:#e58a8a;
+  --display:'Fraunces',Georgia,serif; --body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg)}
+body{color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45;-webkit-font-smoothing:antialiased;
+  -webkit-tap-highlight-color:transparent;padding-top:env(safe-area-inset-top,0px)}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--teal);outline-offset:2px;border-radius:8px}
+.wrap{max-width:560px;margin:0 auto;padding:0 16px calc(90px + env(safe-area-inset-bottom,0px))}
+
+/* header */
+header{display:flex;align-items:center;gap:12px;padding:18px 2px 10px}
+header .h-t{font-family:var(--display);font-weight:600;font-size:1.5rem;line-height:1;flex:1}
+header .date{font-size:.8rem;color:var(--muted);text-align:right;line-height:1.3}
+.gear{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-size:1.1rem;color:var(--muted);background:var(--surface)}
+
+/* rings */
+.ringwrap{display:flex;align-items:center;gap:16px;background:var(--surface);border:1px solid var(--line);
+  border-radius:18px;padding:16px;margin-top:4px}
+.rings{position:relative;width:88px;height:88px;flex:0 0 auto}
+.rings svg{transform:rotate(-90deg)}
+.rings .mid{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-weight:600;
+  font-size:1.15rem}
+.ringmeta{flex:1;min-width:0}
+.ringmeta .lead{font-weight:600;font-size:1.02rem}
+.ringmeta .sub{font-size:.84rem;color:var(--muted);margin-top:3px}
+.pts{display:inline-flex;align-items:center;gap:5px;margin-top:8px;font-size:.78rem;color:var(--add);
+  background:var(--add-soft);border-radius:999px;padding:3px 10px;font-weight:600}
+
+/* session toggle */
+.seg{display:flex;gap:6px;margin:16px 0 4px}
+.seg button{flex:1;padding:10px;border-radius:12px;background:var(--surface);border:1px solid var(--line);
+  color:var(--muted);font-weight:600;font-size:.92rem;display:flex;align-items:center;justify-content:center;gap:7px}
+.seg button.on{color:var(--ink);border-color:transparent}
+.seg button.am.on{background:var(--rose-soft);color:var(--rose)}
+.seg button.pm.on{background:var(--teal-soft);color:var(--teal)}
+
+.banner{display:flex;gap:10px;align-items:center;background:var(--warn-soft);border:1px solid #4a3a1c;
+  border-radius:14px;padding:12px 14px;margin-top:14px;font-size:.88rem}
+.banner button{margin-left:auto;font-weight:700;color:var(--warn);white-space:nowrap}
+
+/* step rows */
+.steps{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:10px}
+.step{display:flex;gap:13px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);
+  border-radius:16px;padding:14px}
+.step.done{background:var(--surface2);border-color:transparent}
+.check{flex:0 0 30px;height:30px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;
+  margin-top:1px;font-size:1rem;color:transparent;transition:.12s}
+.step.done .check{background:var(--ok);border-color:var(--ok);color:#13241a}
+.step .body{flex:1;min-width:0}
+.step .role{font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);font-weight:600}
+.step .prod{font-weight:600;font-size:1rem;margin:2px 0 0;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.step.done .prod{text-decoration:line-through;text-decoration-color:var(--faint);color:var(--muted)}
+.tag{font-size:.6rem;font-weight:700;letter-spacing:.03em;padding:2px 6px;border-radius:5px;text-transform:uppercase}
+.tag.kit{background:var(--kit-soft);color:var(--kit)} .tag.key{background:var(--teal-soft);color:var(--teal)}
+.info{flex:0 0 32px;height:32px;border-radius:50%;background:var(--surface2);color:var(--muted);display:grid;
+  place-items:center;font-size:.95rem;margin-top:1px}
+.detail{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:.86rem;color:var(--muted);
+  display:none}
+.step.open .detail{display:block}
+.detail .swap{color:var(--teal);font-weight:600}
+.detail .add{color:var(--add);font-weight:600}
+.detail .row{margin-top:6px}
+.done-card{text-align:center;background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  padding:26px 18px;margin-top:16px}
+.done-card .big{font-family:var(--display);font-size:1.3rem;font-weight:600}
+.done-card .sub{color:var(--muted);font-size:.9rem;margin-top:6px}
+
+/* generic */
+h2.sec{font-family:var(--display);font-weight:600;font-size:1.15rem;margin:22px 0 10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:12px}
+.muted{color:var(--muted)} .small{font-size:.85rem}
+
+/* check-in */
+.face{display:block;margin:6px auto 2px;max-width:230px}
+.zone{fill:var(--surface2);stroke:var(--line);stroke-width:2;cursor:pointer;transition:.12s}
+.zone.on{stroke-width:2.5}
+.zone.breakout{fill:#5a2c2c;stroke:var(--danger)} .zone.spot{fill:#4a3a16;stroke:var(--warn)}
+.zone.dryness{fill:#1f3a3f;stroke:var(--teal)}
+.zlabel{fill:var(--faint);font-size:11px;font-family:var(--body);pointer-events:none;text-anchor:middle}
+.typepick{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.typepick[hidden]{display:none}
+.typepick button{padding:8px 14px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);
+  font-size:.85rem;font-weight:600}
+.typepick button.breakout.sel{background:#5a2c2c;border-color:var(--danger);color:#f3c9c9}
+.typepick button.spot.sel{background:#4a3a16;border-color:var(--warn);color:#f0d6a6}
+.typepick button.dryness.sel{background:#1f3a3f;border-color:var(--teal);color:#b9e2e8}
+.score{display:flex;gap:8px;margin-top:10px}
+.score button{flex:1;height:48px;border-radius:12px;background:var(--surface2);border:1px solid var(--line);
+  font-weight:700;font-size:1.05rem;color:var(--muted)}
+.score button.on{background:var(--teal-soft);border-color:var(--teal);color:var(--teal)}
+textarea{width:100%;margin-top:10px;background:var(--surface2);border:1px solid var(--line);border-radius:12px;
+  color:var(--ink);padding:12px;font:inherit;resize:vertical;min-height:54px}
+.save{width:100%;margin-top:14px;padding:15px;border-radius:14px;background:var(--teal);color:#0f2327;
+  font-weight:700;font-size:1rem}
+.save.ghost{background:var(--surface2);color:var(--muted)}
+
+/* trends */
+.statrow{display:flex;gap:10px;margin-top:4px}
+.stat{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;text-align:center}
+.stat .n{font-family:var(--display);font-size:1.5rem;font-weight:600}
+.stat .l{font-size:.72rem;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.04em}
+.dots{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+.dot{width:20px;height:20px;border-radius:6px;background:var(--surface2);border:1px solid var(--line);
+  position:relative}
+.dot.ess{background:var(--rose-soft);border-color:var(--rose)}
+.dot.full{background:var(--teal);border-color:var(--teal)}
+.mstone{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.mstone:last-child{border-bottom:0}
+.mstone .m-ic{width:34px;height:34px;border-radius:50%;background:var(--surface2);display:grid;place-items:center;font-size:1rem}
+.mstone.hit .m-ic{background:var(--add-soft);color:var(--add)}
+.mstone .m-t{flex:1} .mstone .m-s{font-size:.8rem;color:var(--muted)}
+.mstone.hit .m-s{color:var(--add)}
+
+/* routine */
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:4px}
+.wday{text-align:center;border:1px solid var(--line);border-radius:10px;padding:8px 3px;background:var(--surface2)}
+.wday .d{font-size:.66rem;text-transform:uppercase;color:var(--faint);font-weight:700}
+.wday .a{font-size:.72rem;margin-top:3px;line-height:1.15}
+.wday.kit{border-color:var(--teal)} .wday.kit .a{color:var(--teal)}
+.wday.acid .a{color:var(--warn)} .wday.mask .a{color:var(--kit)} .wday.rest .a{color:var(--faint)}
+.wday.today{box-shadow:0 0 0 2px var(--rose)}
+.rlist{list-style:none;margin:8px 0 0;padding:0}
+.rlist li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
+.rlist li:last-child{border-bottom:0}
+.rlist .p{flex:1} .rlist .p small{color:var(--faint);display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}
+.toggle{width:46px;height:28px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);
+  position:relative;flex:0 0 auto}
+.toggle::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;
+  background:var(--faint);transition:.15s}
+.toggle.on{background:var(--teal-soft);border-color:var(--teal)}
+.toggle.on::after{left:20px;background:var(--teal)}
+
+/* tab bar */
+nav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(23,21,28,.92);backdrop-filter:blur(10px);
+  border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+nav .in{max-width:560px;margin:0 auto;display:flex}
+nav button{flex:1;padding:10px 0 9px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--faint);
+  font-size:.66rem;font-weight:600}
+nav button .ic{font-size:1.3rem;line-height:1}
+nav button.on{color:var(--ink)}
+nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
+
+.view{display:none} .view.on{display:block}
+/* settings sheet */
+.sheet{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.55);display:none;align-items:flex-end}
+.sheet.on{display:flex}
+.sheet .panel{background:var(--surface);width:100%;max-width:560px;margin:0 auto;border-radius:20px 20px 0 0;
+  padding:20px 18px calc(24px + env(safe-area-inset-bottom,0px))}
+.sheet h3{font-family:var(--display);font-weight:600;margin:0 0 12px;font-size:1.1rem}
+.sheet .opt{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px dashed var(--line)}
+.sheet .opt:last-child{border-bottom:0}
+.linkish{color:var(--teal);font-weight:600;font-size:.9rem}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="h-t">Skin Diary</div>
+    <div class="date" id="hdate"></div>
+    <button class="gear" id="gear" aria-label="Settings">⚙︎</button>
+  </header>
+
+  <!-- TODAY -->
+  <section class="view on" id="v-today">
+    <div class="ringwrap">
+      <div class="rings">
+        <svg width="88" height="88" viewBox="0 0 88 88">
+          <circle cx="44" cy="44" r="38" fill="none" stroke="var(--teal-soft)" stroke-width="9"/>
+          <circle cx="44" cy="44" r="38" fill="none" stroke="var(--teal)" stroke-width="9" stroke-linecap="round" id="ring-out"/>
+          <circle cx="44" cy="44" r="25" fill="none" stroke="var(--rose-soft)" stroke-width="9"/>
+          <circle cx="44" cy="44" r="25" fill="none" stroke="var(--rose)" stroke-width="9" stroke-linecap="round" id="ring-in"/>
+        </svg>
+        <div class="mid" id="ring-mid"></div>
+      </div>
+      <div class="ringmeta">
+        <div class="lead" id="ring-lead">Today</div>
+        <div class="sub" id="ring-sub"></div>
+        <span class="pts" id="pts">✦ 0 pts</span>
+      </div>
+    </div>
+
+    <div class="seg">
+      <button class="am" id="seg-am" data-s="am">☀︎ Morning</button>
+      <button class="pm" id="seg-pm" data-s="pm">☾ Evening</button>
+    </div>
+
+    <div id="backfill"></div>
+    <ul class="steps" id="steplist"></ul>
+    <div id="donecard"></div>
+  </section>
+
+  <!-- CHECK-IN -->
+  <section class="view" id="v-checkin">
+    <h2 class="sec">Check-in</h2>
+    <p class="muted small" style="margin-top:-4px">A quick snapshot — tap a zone, pick what it is, rate how skin felt.</p>
+    <div class="card">
+      <svg class="face" viewBox="0 0 200 230" id="facemap">
+        <path class="zone" data-z="forehead" d="M55 42 Q100 18 145 42 Q150 60 142 74 Q100 64 58 74 Q50 60 55 42Z"/>
+        <path class="zone" data-z="nose" d="M92 80 Q100 76 108 80 L112 126 Q100 134 88 126 Z"/>
+        <path class="zone" data-z="lcheek" d="M50 82 Q70 80 80 92 Q82 120 70 140 Q52 132 46 104 Q46 90 50 82Z"/>
+        <path class="zone" data-z="rcheek" d="M150 82 Q130 80 120 92 Q118 120 130 140 Q148 132 154 104 Q154 90 150 82Z"/>
+        <path class="zone" data-z="chin" d="M74 150 Q100 142 126 150 Q130 176 100 192 Q70 176 74 150Z"/>
+        <text class="zlabel" x="100" y="36">forehead</text>
+        <text class="zlabel" x="100" y="206">chin / jaw</text>
+      </svg>
+      <div class="typepick" id="typepick" hidden>
+        <button class="breakout" data-t="breakout">Breakout</button>
+        <button class="spot" data-t="spot">Dark spot</button>
+        <button class="dryness" data-t="dryness">Dryness</button>
+      </div>
+      <p class="muted small" style="text-align:center;margin:10px 0 0">How did skin feel today?</p>
+      <div class="score" id="score">
+        <button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button>
+        <button data-v="4">4</button><button data-v="5">5</button>
+      </div>
+      <textarea id="note" placeholder="Optional note (tight, oily T-zone, slept badly…)"></textarea>
+      <button class="save" id="save-ci">Save check-in</button>
+    </div>
+  </section>
+
+  <!-- TRENDS -->
+  <section class="view" id="v-trends">
+    <h2 class="sec">Trends</h2>
+    <div class="statrow">
+      <div class="stat"><div class="n" id="t-streak">0</div><div class="l">Day streak</div></div>
+      <div class="stat"><div class="n" id="t-full">0</div><div class="l">Full days</div></div>
+      <div class="stat"><div class="n" id="t-pts">0</div><div class="l">Points</div></div>
+    </div>
+    <h2 class="sec">Last 30 days</h2>
+    <p class="muted small" style="margin-top:-6px">Tinted = essentials met · solid = full day</p>
+    <div class="dots" id="dots"></div>
+    <h2 class="sec">Skin felt</h2>
+    <div class="card"><canvas id="spark" width="520" height="90" style="width:100%;height:90px"></canvas>
+      <p class="muted small" id="spark-lbl" style="margin:6px 0 0"></p></div>
+    <h2 class="sec">Milestones</h2>
+    <div class="card" id="milestones"></div>
+  </section>
+
+  <!-- ROUTINE -->
+  <section class="view" id="v-routine">
+    <h2 class="sec">Weekly evening schedule</h2>
+    <p class="muted small" style="margin-top:-6px">Tap a day to change tonight's active. Mornings are the same every day.</p>
+    <div class="week" id="week"></div>
+    <h2 class="sec">Morning</h2>
+    <ul class="rlist" id="r-am"></ul>
+    <h2 class="sec">Evening</h2>
+    <ul class="rlist" id="r-pm"></ul>
+    <p class="muted small" style="margin-top:14px">Toggle a product off if you've run out — it drops from the plan until you switch it back.
+      Deeper editing (adding products, add-ons) comes next.</p>
+  </section>
+</div>
+
+<nav><div class="in">
+  <button class="on" data-v="today"><span class="ic">☀︎</span>Today</button>
+  <button data-v="checkin"><span class="ic">✎</span>Check-in</button>
+  <button data-v="trends"><span class="ic">📈</span>Trends</button>
+  <button data-v="routine"><span class="ic">🗓</span>Routine</button>
+</div></nav>
+
+<div class="sheet" id="sheet"><div class="panel">
+  <h3>Settings</h3>
+  <div class="opt"><div style="flex:1">Location for sunset<br><span class="muted small">São Paulo (−3). Edit comes later.</span></div></div>
+  <div class="opt"><div style="flex:1">Reset today's check-offs</div><button class="linkish" id="reset-today">Reset</button></div>
+  <div class="opt"><div style="flex:1">About</div><span class="muted small">Skin Diary · v1 · on-device</span></div>
+  <button class="save ghost" id="sheet-close" style="margin-top:16px">Close</button>
+</div></div>
+
+<script>
+"use strict";
+/* ---------- routine data (seeded from the routine card) ---------- */
+const ROUTINE = {
+  am: [
+    {id:'am-clean', role:'Cleanse, then pat dry', prod:'Freshen Cleansing Foam', kit:true,
+     note:'Switch to the gentler Glucoside foam when skin feels dry, tight or sensitive.', swap:'The Ordinary Glucoside Foaming Cleanser',
+     adds:[{p:'Anua mist', when:'Tight or dry mornings'}]},
+    {id:'am-spot', role:'Spots first — needs dry skin', prod:'Power Bright Stick', kit:true,
+     note:'Swipe on manchas / dark spots while skin is still bare.'},
+    {id:'am-treat', role:'Treatment serum', prod:'Power Clarity', kit:true},
+    {id:'am-anti', role:'Antioxidant', prod:'AquaPro Cooler', kit:true,
+     adds:[{p:'Medicube PDRN serum', when:"When skin's dull or tired"},{p:'Caffeine 5% + EGCG', when:'Under eyes, puffy mornings'}]},
+    {id:'am-moist', role:'Moisturise', prod:'The Ordinary NMF + Beta Glucan'},
+    {id:'am-spf', role:'Sunscreen — never skip', prod:'Sun Protect SPF', key:true, essential:true}
+  ],
+  pm: [
+    {id:'pm-clean', role:'Double cleanse, then pat dry', prod:'Cleansing Oil → Freshen Foam', kit:true, essential:true,
+     note:'Oil first (melts SPF/makeup), then foam.', swap:'Medicube Zero Foam — lighter / sensitive days',
+     adds:[{p:'Micellar before the oil', when:'Heavy-makeup days'}]},
+    {id:'pm-spot', role:'Spots first — kit nights only', prod:'Power Bright Stick', kit:true, kitNightOnly:true,
+     note:'Skip on acid / mask nights.'},
+    {id:'pm-treat', role:'Treat — tonight', prod:null, treat:true},
+    {id:'pm-anti', role:'Antioxidant — kit nights', prod:'AquaPro Cooler', kit:true, kitNightOnly:true,
+     adds:[{p:'Medicube PDRN serum', when:'Any night, after the active'}]},
+    {id:'pm-moist', role:'Moisturise + seal', prod:'NMF + Beta Glucan',
+     note:'Switch to Bioderma Atoderm (richer) on dry nights.', swap:'Bioderma Atoderm',
+     adds:[{p:'Curél mist', when:'Dry nights'},{p:'C-kaderm', when:'On scars'}]}
+  ],
+  // 0=Sun .. 6=Sat
+  week: {
+    0:{kind:'kit', label:'Power Clarity', kitNight:true},
+    1:{kind:'acid', label:'Salicylic 2%'},
+    2:{kind:'kit', label:'Power Clarity', kitNight:true},
+    3:{kind:'acid', label:'Zero Pore Pad'},
+    4:{kind:'mask', label:'Mud mask'},
+    5:{kind:'rest', label:'Rest / hydrate'},
+    6:{kind:'kit', label:'Power Clarity', kitNight:true}
+  }
+};
+const WEEK_KINDS = ['kit','acid','mask','rest'];
+const WEEK_LABELS = {kit:'Power Clarity', acid:'Salicylic 2%', mask:'Mud mask', rest:'Rest / hydrate'};
+const DAYNAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const ESSENTIALS = ['am-spf','pm-clean']; // inner ring: morning SPF + evening cleanse
+
+/* ---------- state ---------- */
+const LS = 'skindiary.v1';
+let S = load();
+function load(){ try{ return JSON.parse(localStorage.getItem(LS)) || fresh(); }catch(e){ return fresh(); } }
+function fresh(){ return {days:{}, checkins:{}, points:0, week:null, off:{}, override:{}}; }
+function save(){ try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){} }
+// merge any user edits to the weekly grid over the default
+function wk(){ const w = Object.assign({}, ROUTINE.week); if(S.week) for(const k in S.week){ w[k]=Object.assign({}, w[k], S.week[k]); } return w; }
+
+/* ---------- time / sunset (São Paulo, UTC-3, no DST) ---------- */
+const LAT=-23.55, LNG=-46.63, TZ=-3;
+function spNow(){ const d=new Date(); return new Date(d.getTime()+d.getTimezoneOffset()*60000 + TZ*3600000); }
+function dateKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function mod(a,n){ return ((a%n)+n)%n; }
+function dayOfYear(d){ const s=Date.UTC(d.getFullYear(),0,0); return Math.floor((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())-s)/86400000); }
+function sunsetHourLocal(d){ // returns local (SP) hour of sunset, e.g. 18.4
+  const D2R=Math.PI/180,R2D=180/Math.PI, zenith=90.833, N=dayOfYear(d), lngH=LNG/15;
+  const t=N+((18-lngH)/24); let M=(0.9856*t)-3.289;
+  let L=mod(M+(1.916*Math.sin(M*D2R))+(0.020*Math.sin(2*M*D2R))+282.634,360);
+  let RA=mod(R2D*Math.atan(0.91764*Math.tan(L*D2R)),360);
+  RA=(RA+(Math.floor(L/90)*90 - Math.floor(RA/90)*90))/15;
+  const sinDec=0.39782*Math.sin(L*D2R), cosDec=Math.cos(Math.asin(sinDec));
+  const cosH=(Math.cos(zenith*D2R)-(sinDec*Math.sin(LAT*D2R)))/(cosDec*Math.cos(LAT*D2R));
+  if(cosH>1||cosH<-1) return 18;
+  let H=(R2D*Math.acos(cosH))/15; const T=H+RA-(0.06571*t)-6.622;
+  return mod(mod(T-lngH,24)+TZ,24);
+}
+function autoSession(){ const d=spNow(); const h=d.getHours()+d.getMinutes()/60; return h>=sunsetHourLocal(d) ? 'pm' : 'am'; }
+
+/* ---------- today-plan assembly ---------- */
+function todayKey(){ return dateKey(spNow()); }
+function curSession(){ const k=todayKey(); return S.override[k] || autoSession(); }
+function isOff(prod){ return prod && S.off[prod]; }
+function nightKind(){ return wk()[spNow().getDay()]; }
+// steps that actually apply to a session today (respecting kit/acid night + products turned off)
+function sessionSteps(sess){
+  const night = nightKind();
+  let steps = ROUTINE[sess].map(s=>Object.assign({}, s));
+  if(sess==='pm'){
+    steps = steps.filter(s=> !(s.kitNightOnly && !night.kitNight));
+    const treat = steps.find(s=>s.treat);
+    if(treat){
+      if(night.kind==='rest'){ treat.prod='Hydrate only — no active'; treat.rest=true; }
+      else { treat.prod = night.label; treat.kit = (night.kind==='kit'); }
+    }
+  }
+  return steps.filter(s=> !isOff(s.prod));
+}
+function allApplicable(){ // every applicable step id across both sessions today (for full ring)
+  return [...sessionSteps('am'), ...sessionSteps('pm')].map(s=>s.id);
+}
+function doneSet(sess){ const d=S.days[todayKey()]||{}; return d[sess]||{}; }
+function isDone(sess,id){ return !!doneSet(sess)[id]; }
+function toggle(sess,id){
+  const k=todayKey(); S.days[k]=S.days[k]||{am:{},pm:{}}; S.days[k][sess]=S.days[k][sess]||{};
+  S.days[k][sess][id] = !S.days[k][sess][id];
+  if(!S.days[k][sess][id]) delete S.days[k][sess][id];
+  recomputePoints(); save();
+}
+
+/* essentials + full completion for a given day key (uses live plan for today; stored marks for past) */
+function essentialsMet(k){ const d=S.days[k]; if(!d) return false;
+  return ESSENTIALS.every(id=>{ const sess=id.startsWith('am')?'am':'pm'; return d[sess]&&d[sess][id]; }); }
+function fullMet(k){ const d=S.days[k]; if(!d) return false;
+  // approximate for past days: all marks present for both sessions of the applicable set computed today.
+  const need = (k===todayKey()) ? allApplicable() : allApplicable();
+  return need.every(id=>{ const sess=id.startsWith('am')?'am':'pm'; return d[sess]&&d[sess][id]; }); }
+function recomputePoints(){ let p=0; for(const k in S.days){ if(fullMet(k)) p++; } S.points=p; }
+
+function streak(){ let n=0; const d=spNow(); for(let i=0;i<400;i++){ const k=dateKey(new Date(d.getTime()-i*86400000));
+  if(essentialsMet(k)) n++; else if(i===0) continue; else break; } return n; }
+
+/* ---------- rendering ---------- */
+const $ = s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+function setRing(el,r,frac){ const c=2*Math.PI*r; el.setAttribute('stroke-dasharray',c);
+  el.setAttribute('stroke-dashoffset', c*(1-Math.max(0,Math.min(1,frac)))); }
+
+function renderToday(){
+  const sess=curSession(), k=todayKey();
+  $('#hdate').innerHTML = spNow().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'});
+  // segment
+  $('#seg-am').classList.toggle('on', sess==='am'); $('#seg-pm').classList.toggle('on', sess==='pm');
+  // rings
+  let essDone=0; ESSENTIALS.forEach(id=>{ const s=id.startsWith('am')?'am':'pm'; if(isDone(s,id)) essDone++; });
+  const applic=allApplicable(); let fullDone=0; applic.forEach(id=>{ const s=id.startsWith('am')?'am':'pm'; if(isDone(s,id)) fullDone++; });
+  setRing($('#ring-in'),25,essDone/ESSENTIALS.length);
+  setRing($('#ring-out'),38,applic.length?fullDone/applic.length:0);
+  $('#ring-mid').textContent = fullDone+'/'+applic.length;
+  const essN = essentialsMet(k);
+  $('#ring-lead').textContent = essN ? (fullMet(k)?'Full day — done ✨':'Essentials done') : 'In progress';
+  $('#ring-sub').textContent = essN ? (fullMet(k)?'Both rings closed. Nice.':'Close the outer ring for a full day.')
+    : 'Inner ring: morning SPF + evening cleanse.';
+  $('#pts').textContent = '✦ '+S.points+' pts';
+  // backfill banner
+  const bf=$('#backfill'); bf.innerHTML='';
+  if(sess==='pm' && !(S.days[k]&&S.days[k].am&&S.days[k].am['am-spf'])){
+    bf.innerHTML='<div class="banner">Morning not logged yet. <button id="go-am">Log Morning</button></div>';
+    $('#go-am').onclick=()=>{ S.override[k]='am'; save(); renderToday(); };
+  }
+  // steps
+  const steps=sessionSteps(sess), done=steps.filter(s=>isDone(sess,s.id)).length;
+  const list=$('#steplist'); list.innerHTML='';
+  steps.forEach(s=>{
+    const li=document.createElement('li'); li.className='step'+(isDone(sess,s.id)?' done':'');
+    const tags=(s.kit?'<span class="tag kit">kit</span>':'')+(s.key?'<span class="tag key">never skip</span>':'');
+    let detail='';
+    if(s.note) detail+='<div class="row">'+s.note+'</div>';
+    if(s.swap) detail+='<div class="row"><span class="swap">🔄 Switch:</span> '+s.swap+'</div>';
+    if(s.adds) s.adds.forEach(a=>detail+='<div class="row"><span class="add">+ '+a.p+'</span> — '+a.when+'</div>');
+    li.innerHTML=
+      '<div class="check" role="button" aria-label="Done">✓</div>'+
+      '<div class="body"><div class="role">'+s.role+'</div>'+
+      '<div class="prod">'+(s.prod||'')+tags+'</div>'+
+      (detail?'<div class="detail">'+detail+'</div>':'')+'</div>'+
+      (detail?'<div class="info" role="button" aria-label="Details">ⓘ</div>':'');
+    li.querySelector('.check').onclick=()=>{ toggle(sess,s.id); renderToday(); renderTrends(); };
+    const inf=li.querySelector('.info'); if(inf) inf.onclick=()=>li.classList.toggle('open');
+    list.appendChild(li);
+  });
+  // done card
+  const dc=$('#donecard'); dc.innerHTML='';
+  if(steps.length && done===steps.length){
+    const next = sess==='am' ? 'Evening next, around sunset' : 'Done for today';
+    dc.innerHTML='<div class="done-card"><div class="big">'+(sess==='am'?'Morning done ☀︎':'All done ☾')+
+      '</div><div class="sub">'+next+'. '+(photoDue()?'A progress photo is due this week.':'')+'</div></div>';
+  }
+}
+
+function renderRoutine(){
+  const w=wk(), today=spNow().getDay(), wd=$('#week'); wd.innerHTML='';
+  for(let i=0;i<7;i++){ const day=w[i]; const el=document.createElement('button');
+    el.className='wday '+day.kind+(i===today?' today':'');
+    el.innerHTML='<div class="d">'+DAYNAMES[i]+'</div><div class="a">'+(day.kind==='kit'?'Kit — ':'')+day.label+'</div>';
+    el.onclick=()=>{ const idx=(WEEK_KINDS.indexOf(day.kind)+1)%WEEK_KINDS.length; const kind=WEEK_KINDS[idx];
+      S.week=S.week||{}; S.week[i]={kind, label:WEEK_LABELS[kind], kitNight:kind==='kit'}; save(); renderRoutine(); renderToday(); };
+    wd.appendChild(el); }
+  const fill=(ul,arr)=>{ ul.innerHTML=''; arr.forEach(s=>{ if(!s.prod && s.treat) return; const li=document.createElement('li');
+    const prod = s.prod || (s.treat?'(tonight\'s active)':'');
+    li.innerHTML='<div class="p">'+prod+'<small>'+s.role+'</small></div>'+
+      '<div class="toggle'+(isOff(s.prod)?'':' on')+'" role="switch"></div>';
+    const tg=li.querySelector('.toggle'); tg.onclick=()=>{ if(!s.prod) return; if(S.off[s.prod]) delete S.off[s.prod]; else S.off[s.prod]=true; save(); renderRoutine(); renderToday(); };
+    ul.appendChild(li); }); };
+  fill($('#r-am'), ROUTINE.am); fill($('#r-pm'), ROUTINE.pm);
+}
+
+/* ---------- check-in ---------- */
+let ciDraft = null, ciZone = null;
+function loadCIDraft(){ const k=todayKey(); ciDraft = JSON.parse(JSON.stringify(S.checkins[k]||{zones:{},score:0,note:''})); }
+function renderCheckin(){
+  loadCIDraft();
+  $$('#facemap .zone').forEach(z=>{ const zn=z.dataset.z, v=ciDraft.zones[zn];
+    z.classList.remove('on','breakout','spot','dryness'); if(v){ z.classList.add('on',v); } });
+  $('#typepick').hidden=true; ciZone=null;
+  $$('#score button').forEach(b=>b.classList.toggle('on', +b.dataset.v===ciDraft.score));
+  $('#note').value=ciDraft.note||'';
+  const existed=!!S.checkins[todayKey()]; $('#save-ci').textContent = existed?'Update check-in':'Save check-in';
+}
+function bindCheckin(){
+  $$('#facemap .zone').forEach(z=>z.onclick=()=>{ ciZone=z.dataset.z; const tp=$('#typepick'); tp.hidden=false;
+    $$('#typepick button').forEach(b=>b.classList.toggle('sel', ciDraft.zones[ciZone]===b.dataset.t)); });
+  $$('#typepick button').forEach(b=>b.onclick=()=>{ if(!ciZone) return;
+    if(ciDraft.zones[ciZone]===b.dataset.t) delete ciDraft.zones[ciZone]; else ciDraft.zones[ciZone]=b.dataset.t;
+    renderCIZones(); $('#typepick').hidden=true; });
+  $$('#score button').forEach(b=>b.onclick=()=>{ ciDraft.score=+b.dataset.v;
+    $$('#score button').forEach(x=>x.classList.toggle('on',x===b)); });
+  $('#note').oninput=e=>ciDraft.note=e.target.value;
+  $('#save-ci').onclick=()=>{ ciDraft.ts=Date.now(); S.checkins[todayKey()]=ciDraft; save(); renderTrends();
+    $('#save-ci').textContent='Saved ✓'; setTimeout(()=>go('trends'),500); };
+}
+function renderCIZones(){ $$('#facemap .zone').forEach(z=>{ const v=ciDraft.zones[z.dataset.z];
+  z.classList.remove('on','breakout','spot','dryness'); if(v) z.classList.add('on',v); }); }
+
+/* ---------- trends ---------- */
+function renderTrends(){
+  $('#t-streak').textContent=streak(); $('#t-full').textContent=S.points; $('#t-pts').textContent=S.points;
+  const dots=$('#dots'); dots.innerHTML=''; const d0=spNow();
+  for(let i=29;i>=0;i--){ const k=dateKey(new Date(d0.getTime()-i*86400000)); const el=document.createElement('div');
+    el.className='dot'+(fullMet(k)?' full':essentialsMet(k)?' ess':''); el.title=k; dots.appendChild(el); }
+  drawSpark();
+  const M=[{n:'First week',need:7,ic:'🌱'},{n:'30-day glow',need:30,ic:'✨'},{n:'100 full days',need:100,ic:'💎'}];
+  const ms=$('#milestones'); ms.innerHTML='';
+  M.forEach(m=>{ const hit=S.points>=m.need; const el=document.createElement('div'); el.className='mstone'+(hit?' hit':'');
+    el.innerHTML='<div class="m-ic">'+(hit?m.ic:'○')+'</div><div class="m-t">'+m.n+
+      '<div class="m-s">'+(hit?'Unlocked':S.points+' / '+m.need+' full days')+'</div></div>'; ms.appendChild(el); });
+}
+function drawSpark(){ const c=$('#spark'), x=c.getContext('2d'); x.clearRect(0,0,c.width,c.height);
+  const d0=spNow(), pts=[]; for(let i=29;i>=0;i--){ const k=dateKey(new Date(d0.getTime()-i*86400000));
+    const ci=S.checkins[k]; pts.push(ci&&ci.score?ci.score:null); }
+  const vals=pts.filter(v=>v!=null); if(!vals.length){ $('#spark-lbl').textContent='No check-ins yet — log one to see the trend.'; return; }
+  const W=c.width,H=c.height,pad=10; x.strokeStyle='#7fbcc6'; x.lineWidth=2.5; x.beginPath(); let started=false;
+  pts.forEach((v,i)=>{ if(v==null) return; const px=pad+(W-2*pad)*(i/29), py=H-pad-((v-1)/4)*(H-2*pad);
+    if(!started){ x.moveTo(px,py); started=true; } else x.lineTo(px,py); });
+  x.stroke();
+  pts.forEach((v,i)=>{ if(v==null) return; const px=pad+(W-2*pad)*(i/29), py=H-pad-((v-1)/4)*(H-2*pad);
+    x.fillStyle='#e0968f'; x.beginPath(); x.arc(px,py,3,0,7); x.fill(); });
+  const last=vals[vals.length-1]; $('#spark-lbl').textContent='Latest: '+last+'/5 · '+vals.length+' check-ins logged.';
+}
+
+/* ---------- photo nudge (placeholder until Phase 2) ---------- */
+function photoDue(){ return false; }
+
+/* ---------- navigation ---------- */
+function go(v){ $$('.view').forEach(s=>s.classList.remove('on')); $('#v-'+v).classList.add('on');
+  $$('nav button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  if(v==='today') renderToday(); if(v==='checkin') renderCheckin(); if(v==='trends') renderTrends(); if(v==='routine') renderRoutine();
+  try{ history.replaceState(null,'','#'+v); }catch(e){} window.scrollTo(0,0);
+}
+$$('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+$('#seg-am').onclick=()=>{ S.override[todayKey()]='am'; save(); renderToday(); };
+$('#seg-pm').onclick=()=>{ S.override[todayKey()]='pm'; save(); renderToday(); };
+$('#gear').onclick=()=>$('#sheet').classList.add('on');
+$('#sheet-close').onclick=()=>$('#sheet').classList.remove('on');
+$('#sheet').onclick=e=>{ if(e.target.id==='sheet') $('#sheet').classList.remove('on'); };
+$('#reset-today').onclick=()=>{ delete S.days[todayKey()]; delete S.override[todayKey()]; recomputePoints(); save();
+  $('#sheet').classList.remove('on'); renderToday(); renderTrends(); };
+
+/* ---------- boot ---------- */
+recomputePoints(); bindCheckin();
+const start=(location.hash||'#today').slice(1); go(['today','checkin','trends','routine'].includes(start)?start:'today');
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</html>
