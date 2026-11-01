@@ -335,7 +335,7 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
 
 <div class="sheet" id="sheet"><div class="panel">
   <h3>Settings</h3>
-  <div class="opt"><div style="flex:1">Location for sunset<br><span class="muted small">São Paulo (−3). Edit comes later.</span></div></div>
+  <div class="opt"><div style="flex:1">Location for sunset<br><span class="muted small">São Paulo (−3) · drives Morning/Evening</span></div></div>
   <div class="opt"><div style="flex:1">Reset today's check-offs</div><button class="linkish" id="reset-today">Reset</button></div>
   <div class="opt" style="flex-direction:column;align-items:stretch;gap:8px">
     <div>Back up to Saúde DB <span class="muted small">— paste the web-app URL</span></div>
@@ -427,7 +427,7 @@ const PRODUCTS = ['Freshen Cleansing Foam','The Ordinary Glucoside Foaming Clean
 const LS = 'skindiary.v1';
 let S = load();
 function load(){ try{ return JSON.parse(localStorage.getItem(LS)) || fresh(); }catch(e){ return fresh(); } }
-function fresh(){ return {days:{}, checkins:{}, points:0, week:null, off:{}, override:{}, syncUrl:'', deviceId:null, firstUse:null, lastSync:0, photoSynced:{}}; }
+function fresh(){ return {days:{}, checkins:{}, points:0, week:null, off:{}, override:{}, trip:null, recovery:null, syncUrl:'', deviceId:null, firstUse:null, lastSync:0, photoSynced:{}}; }
 function rawSave(){ try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){} }
 function save(){ rawSave(); scheduleSync(); }
 
@@ -490,6 +490,16 @@ function isOff(prod){ return prod && S.off[prod]; }
 function nightKind(){ return wk()[spNow().getDay()]; }
 function travelActive(){ const t=S.trip; if(!t||!t.start||!t.end) return false; const k=todayKey(); return k>=t.start && k<=t.end; }
 function packed(name){ return !!(S.trip&&S.trip.packed&&S.trip.packed[name]); }
+function recoveryEnd(){ const r=S.recovery; if(!r||!r.start) return null; return dateKey(new Date(new Date(r.start+'T00:00:00').getTime()+(r.days||3)*86400000)); }
+function recoveryActive(){ const r=S.recovery; if(!r||!r.start) return false; const k=todayKey(); return k>=r.start && k<recoveryEnd(); }
+// ingredient-conflict guardrails — pairs that shouldn't share a day
+const CONFLICTS=[['Power Clarity','Salicylic 2%'],['Power Clarity','Zero Pore Pad'],
+  ['Power Bright Stick','Salicylic 2%'],['Power Bright Stick','Zero Pore Pad'],
+  ['Salicylic 2%','Zero Pore Pad'],['Salicylic 2%','Mud mask'],['Zero Pore Pad','Mud mask']];
+function sessionProducts(se){ const set=new Set(); sessionSteps(se).forEach(st=>{
+  if(st.prod) String(st.prod).split(' → ').forEach(p=>set.add(p.trim())); if(st.adds) st.adds.forEach(a=>set.add(a.p)); }); return set; }
+function conflictWarnings(){ const out=[]; ['am','pm'].forEach(se=>{ const set=sessionProducts(se);
+  CONFLICTS.forEach(p=>{ if(set.has(p[0])&&set.has(p[1])) out.push(p[0]+' + '+p[1]+' in one '+(se==='am'?'morning':'evening')+' — skip one.'); }); }); return out; }
 // steps that actually apply to a session today (kit/acid night, products turned off, and Travel mode)
 function sessionSteps(sess){
   const night = nightKind();
@@ -515,8 +525,10 @@ function sessionSteps(sess){
       if(st.swapProd && packed(st.swapProd)){ st.prod=st.swapProd; st.swapped=true; out.push(st); continue; }
       if(st.key){ st.missing=true; out.push(st); continue; } // SPF stays, flagged
     }
-    return out;
+    steps=out;
   }
+  if(recoveryActive()){ const gentle=['am-clean','am-moist','am-spf','pm-clean','pm-moist'];
+    steps = steps.filter(s=>gentle.includes(s.id)).map(s=>{ const st=Object.assign({},s); st.recovery=true; st.adds=[]; return st; }); }
   return steps;
 }
 function allApplicable(){ // every applicable step id across both sessions today (for full ring)
@@ -566,11 +578,17 @@ function renderToday(){
   $('#pts').textContent = '✦ '+S.points+' pts';
   // backfill banner
   const bf=$('#backfill'); let bfh='';
+  if(recoveryActive()){
+    bfh+='<div class="banner" style="background:var(--add-soft);border-color:#3a5230">🌿 Recovery — gentle steps only, until '+recoveryEnd()+'<button id="end-rec" style="margin-left:auto;font-weight:700;color:var(--add)">End</button></div>'; }
+  else { bfh+='<div style="margin-top:12px"><button id="start-rec" class="linkish" style="color:var(--muted);font-weight:600;font-size:.86rem">🌿 Skin irritated? Start a 3-day recovery</button></div>'; }
   if(travelActive()){ const t=S.trip;
     bfh+='<div class="banner" style="background:var(--teal-soft);border-color:#2e4a50">✈️ Travel mode — your packed kit · '+t.start+' → '+t.end+'</div>'; }
   if(sess==='pm' && !(S.days[k]&&S.days[k].am&&S.days[k].am['am-spf'])){
     bfh+='<div class="banner">Morning not logged yet. <button id="go-am">Log Morning</button></div>'; }
+  conflictWarnings().forEach(m=>{ bfh+='<div class="banner" style="background:var(--warn-soft);border-color:#4a3a1c">⚠ '+m+'</div>'; });
   bf.innerHTML=bfh;
+  const sr=$('#start-rec'); if(sr) sr.onclick=()=>{ S.recovery={start:todayKey(),days:3}; save(); renderToday(); };
+  const er=$('#end-rec'); if(er) er.onclick=()=>{ S.recovery=null; save(); renderToday(); };
   const gam=$('#go-am'); if(gam) gam.onclick=()=>{ S.override[k]='am'; save(); renderToday(); };
   // steps
   const steps=sessionSteps(sess), done=steps.filter(s=>isDone(sess,s.id)).length;
