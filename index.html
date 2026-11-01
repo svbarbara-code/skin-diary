@@ -91,13 +91,22 @@ h2.sec{font-family:var(--display);font-weight:600;font-size:1.15rem;margin:22px 
 .card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:12px}
 .muted{color:var(--muted)} .small{font-size:.85rem}
 
-/* check-in */
-.face{display:block;margin:6px auto 2px;max-width:230px}
-.zone{fill:var(--surface2);stroke:var(--line);stroke-width:2;cursor:pointer;transition:.12s}
-.zone.on{stroke-width:2.5}
-.zone.breakout{fill:#5a2c2c;stroke:var(--danger)} .zone.spot{fill:#4a3a16;stroke:var(--warn)}
-.zone.dryness{fill:#1f3a3f;stroke:var(--teal)}
-.zlabel{fill:var(--faint);font-size:11px;font-family:var(--body);pointer-events:none;text-anchor:middle}
+/* check-in — tappable clay-face map */
+.facewrap{position:relative;width:100%;max-width:272px;margin:8px auto 2px;
+  -webkit-user-select:none;user-select:none;touch-action:manipulation}
+.facewrap img{display:block;width:100%;height:auto;border-radius:16px;pointer-events:none;-webkit-user-drag:none}
+.zone{position:absolute;transform:translate(-50%,-50%);border-radius:50%;padding:0;cursor:pointer;color:var(--muted);
+  background:rgba(255,255,255,.05);border:1.6px solid rgba(255,255,255,.26);
+  -webkit-tap-highlight-color:transparent;transition:background .14s,border-color .14s,box-shadow .14s}
+.zone::after{content:"";position:absolute;left:50%;top:50%;width:11px;height:11px;border-radius:50%;
+  background:currentColor;box-shadow:0 0 0 3px var(--bg);transform:translate(-50%,-50%) scale(0);transition:transform .16s}
+.zone:hover,.zone:focus-visible{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.7);outline:none}
+.zone:focus-visible{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--teal)}
+.zone.on{border-style:solid;border-width:2.5px}
+.zone.on::after{transform:translate(-50%,-50%) scale(1)}
+.zone.breakout{color:var(--danger);border-color:var(--danger);background:rgba(229,138,138,.22)}
+.zone.spot{color:var(--warn);border-color:var(--warn);background:rgba(227,168,103,.22)}
+.zone.dryness{color:var(--teal);border-color:var(--teal);background:rgba(127,188,198,.20)}
 .typepick{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
 .typepick[hidden]{display:none}
 .typepick button{padding:8px 14px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);
@@ -235,15 +244,14 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
     <h2 class="sec">Check-in</h2>
     <p class="muted small" style="margin-top:-4px">A quick snapshot — tap a zone, pick what it is, rate how skin felt.</p>
     <div class="card">
-      <svg class="face" viewBox="0 0 200 230" id="facemap">
-        <path class="zone" data-z="forehead" d="M55 42 Q100 18 145 42 Q150 60 142 74 Q100 64 58 74 Q50 60 55 42Z"/>
-        <path class="zone" data-z="nose" d="M92 80 Q100 76 108 80 L112 126 Q100 134 88 126 Z"/>
-        <path class="zone" data-z="lcheek" d="M50 82 Q70 80 80 92 Q82 120 70 140 Q52 132 46 104 Q46 90 50 82Z"/>
-        <path class="zone" data-z="rcheek" d="M150 82 Q130 80 120 92 Q118 120 130 140 Q148 132 154 104 Q154 90 150 82Z"/>
-        <path class="zone" data-z="chin" d="M74 150 Q100 142 126 150 Q130 176 100 192 Q70 176 74 150Z"/>
-        <text class="zlabel" x="100" y="36">forehead</text>
-        <text class="zlabel" x="100" y="206">chin / jaw</text>
-      </svg>
+      <div class="facewrap" id="facemap">
+        <img src="clay-face.webp" alt="Face map — tap a zone to log how your skin is there" width="480" height="825">
+        <button class="zone" data-z="forehead" aria-label="Forehead" style="left:48%;top:17%;width:46%;height:20%"></button>
+        <button class="zone" data-z="nose"     aria-label="Nose"     style="left:49%;top:42%;width:15%;height:22%"></button>
+        <button class="zone" data-z="lcheek"   aria-label="Left cheek"  style="left:30%;top:48%;width:22%;height:18%"></button>
+        <button class="zone" data-z="rcheek"   aria-label="Right cheek" style="left:68%;top:48%;width:22%;height:18%"></button>
+        <button class="zone" data-z="chin"     aria-label="Chin and jaw" style="left:49%;top:67%;width:26%;height:15%"></button>
+      </div>
       <div class="typepick" id="typepick" hidden>
         <button class="breakout" data-t="breakout">Breakout</button>
         <button class="spot" data-t="spot">Dark spot</button>
@@ -364,6 +372,7 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
       <span class="muted small" id="sync-status" style="margin-left:auto"></span>
     </div>
   </div>
+  <div class="opt"><div style="flex:1">Restore photos from Drive <span class="muted small">— re-fill the gallery on a new phone</span></div><button class="linkish" id="photo-restore">Restore</button></div>
   <div class="opt"><div style="flex:1">Travel mode <span class="muted small" id="trip-sum"></span></div><button class="linkish" id="open-travel">Set up</button></div>
   <div class="opt"><div style="flex:1">About</div><span class="muted small">Skin Diary · v1</span></div>
   <button class="save ghost" id="sheet-close" style="margin-top:16px">Close</button>
@@ -385,10 +394,25 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
   <button class="save ghost" id="travel-close" style="margin-top:10px">Close</button>
 </div></div>
 
+<div class="sheet" id="onboard"><div class="panel">
+  <h3>Welcome to Skin Diary</h3>
+  <p class="muted small" style="margin-top:-6px">A private skincare tracker that lives on this phone. Check off your morning and evening steps, snap a weekly progress photo, and watch your skin change over time.</p>
+  <div class="opt"><div style="flex:1">📍 Location<br><span class="muted small">São Paulo — sunset sets the Morning / Evening switch.</span></div></div>
+  <div class="opt" style="flex-direction:column;align-items:stretch;gap:8px">
+    <div>☁︎ Back up to Saúde DB <span class="muted small">— optional, paste the web-app URL</span></div>
+    <input id="ob-url" type="url" inputmode="url" placeholder="https://script.google.com/…/exec"
+      style="background:var(--surface2);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:11px;font:inherit">
+    <span class="muted small" id="ob-status"></span>
+  </div>
+  <p class="muted small">Everything stays on this phone unless you add the backup URL. You can change all of this later in ⚙︎ Settings.</p>
+  <button class="save" id="ob-start" style="margin-top:8px">Start</button>
+</div></div>
+
 <div class="sheet" id="player"><div class="panel" style="background:#07060a">
   <img id="player-img" alt="" style="width:100%;border-radius:12px;display:block;background:#000;aspect-ratio:3/4;object-fit:cover">
   <p id="player-cap" class="muted small" style="text-align:center;margin:10px 0 0"></p>
-  <button class="save ghost" id="player-close" style="margin-top:12px">Close</button>
+  <button class="save" id="player-save" style="margin-top:12px">⬇ Save as video</button>
+  <button class="save ghost" id="player-close" style="margin-top:10px">Close</button>
 </div></div>
 
 <script>
@@ -444,7 +468,7 @@ const PRODUCTS = ['Freshen Cleansing Foam','The Ordinary Glucoside Foaming Clean
 const LS = 'skindiary.v1';
 let S = load();
 function load(){ try{ return JSON.parse(localStorage.getItem(LS)) || fresh(); }catch(e){ return fresh(); } }
-function fresh(){ return {days:{}, checkins:{}, points:0, week:null, off:{}, override:{}, trip:null, recovery:null, recoveryDays:3, customProducts:[], photoPin:'', syncUrl:'', deviceId:null, firstUse:null, lastSync:0, photoSynced:{}}; }
+function fresh(){ return {days:{}, checkins:{}, points:0, week:null, off:{}, override:{}, trip:null, recovery:null, recoveryDays:3, customProducts:[], photoPin:'', syncUrl:'', deviceId:null, firstUse:null, lastSync:0, photoSynced:{}, onboarded:false}; }
 function rawSave(){ try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){} }
 function save(){ rawSave(); scheduleSync(); }
 
@@ -477,6 +501,27 @@ async function uploadPhoto(p){ if(!S.syncUrl||!p) return; S.photoSynced=S.photoS
     const j=await r.json(); if(j&&j.ok){ S.photoSynced[p.id]=true; rawSave(); } }catch(e){}
 }
 async function backupPhotos(){ if(!S.syncUrl) return; for(const p of PHOTOS){ await uploadPhoto(p); } syncStatus('Photos backed up'); }
+// Pull any photos that are in Drive but not on this device (device-swap recovery).
+async function restorePhotos(statusFn){ if(!S.syncUrl) return {restored:0}; const log=statusFn||syncStatus;
+  try{
+    const u=S.syncUrl+(S.syncUrl.indexOf('?')>=0?'&':'?')+'action=photos';
+    const r=await fetch(u); const j=await r.json();
+    if(!j||!j.ok||!Array.isArray(j.photos)) return {restored:0};
+    if(!PH_LOADED) await loadPhotos();
+    const have={}; PHOTOS.forEach(p=>have[p.id]=true);
+    const missing=j.photos.filter(m=>m.id&&!have[m.id]);
+    if(!missing.length){ log('Photos up to date'); return {restored:0}; }
+    let n=0;
+    for(const m of missing){ log('Restoring photo '+(n+1)+'/'+missing.length+'…');
+      try{ const pr=await fetch(S.syncUrl+(S.syncUrl.indexOf('?')>=0?'&':'?')+'action=photo&fileId='+encodeURIComponent(m.fileId));
+        const pj=await pr.json(); if(!pj||!pj.ok||!pj.data) continue;
+        const ts=/^p\d+$/.test(m.id)?parseInt(m.id.slice(1),10):Date.now();
+        await photoAdd({id:m.id, date:m.date, session:m.session, ts, data:pj.data});
+        S.photoSynced=S.photoSynced||{}; S.photoSynced[m.id]=true; n++;
+      }catch(e){} }
+    rawSave(); await loadPhotos(); log('Restored '+n+' photo'+(n===1?'':'s')); return {restored:n};
+  }catch(e){ log('Restore failed'); return {restored:0}; }
+}
 // merge any user edits to the weekly grid over the default
 function wk(){ const w = Object.assign({}, ROUTINE.week); if(S.week) for(const k in S.week){ w[k]=Object.assign({}, w[k], S.week[k]); } return w; }
 
@@ -798,7 +843,7 @@ function renderCompare(){ if(!cmpA||!cmpB) return; const cmp=$('#cmp');
 /* timelapse player (on-device slideshow) */
 let playTimer=null;
 function playTL(){ const list=PHOTOS.filter(p=>phFilter==='all'||p.session===phFilter); if(!list.length) return;
-  let i=0; $('#player').classList.add('on'); const img=$('#player-img'), cap=$('#player-cap');
+  let i=0; $('#player').classList.add('on'); $('#player-save').style.display=list.length>=2?'':'none'; const img=$('#player-img'), cap=$('#player-cap');
   const tick=()=>{ const p=list[i]; img.src=p.data;
     cap.textContent=(i+1)+' / '+list.length+' · '+p.date+' · '+(p.session==='am'?'Morning':'Evening');
     i++; if(i>=list.length){ clearInterval(playTimer); playTimer=null; } };
@@ -806,11 +851,47 @@ function playTL(){ const list=PHOTOS.filter(p=>phFilter==='all'||p.session===phF
 }
 function closePlayer(){ if(playTimer){ clearInterval(playTimer); playTimer=null; } $('#player').classList.remove('on'); }
 
+/* render the current filter's photos into a downloadable video, entirely on-device */
+let mkBusy=false;
+async function makeVideo(){
+  if(mkBusy) return;
+  const list=PHOTOS.filter(p=>phFilter==='all'||p.session===phFilter);
+  if(list.length<2){ alert('Take at least two photos first.'); return; }
+  if(typeof MediaRecorder==='undefined' || !HTMLCanvasElement.prototype.captureStream){
+    alert('This browser can’t render a video on-device. Your photos are safe in Drive — ask Claude to make the MP4.'); return; }
+  mkBusy=true; const cap=$('#player-cap'), btn=$('#player-save'); btn.disabled=true;
+  try{
+    const imgs=[]; for(const p of list){ const im=new Image(); im.src=p.data; try{ await im.decode(); }catch(e){} imgs.push({im,p}); }
+    const W=1080,H=1440, c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d');
+    const draw=(im,p)=>{ x.fillStyle='#07060a'; x.fillRect(0,0,W,H);
+      const iw=im.naturalWidth||W, ih=im.naturalHeight||H, r=Math.max(W/iw,H/ih), dw=iw*r, dh=ih*r;
+      x.drawImage(im,(W-dw)/2,(H-dh)/2,dw,dh);
+      x.fillStyle='rgba(0,0,0,.45)'; x.fillRect(0,H-96,W,96);
+      x.fillStyle='#fff'; x.font='600 40px -apple-system,system-ui,sans-serif'; x.textBaseline='middle';
+      x.fillText(p.date+'  ·  '+(p.session==='am'?'Morning':'Evening'), 36, H-48); };
+    draw(imgs[0].im, imgs[0].p); // first frame before recording starts
+    const stream=c.captureStream(30);
+    let mime=''; ['video/mp4','video/mp4;codecs=h264','video/webm;codecs=vp9','video/webm'].some(m=>{ if(MediaRecorder.isTypeSupported(m)){ mime=m; return true; } return false; });
+    const rec=new MediaRecorder(stream, mime?{mimeType:mime,videoBitsPerSecond:5000000}:undefined);
+    const chunks=[]; rec.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+    const done=new Promise(res=>{ rec.onstop=res; });
+    rec.start();
+    for(let i=0;i<imgs.length;i++){ cap.textContent='Rendering '+(i+1)+'/'+imgs.length+'…'; draw(imgs[i].im,imgs[i].p); await new Promise(r=>setTimeout(r,450)); }
+    await new Promise(r=>setTimeout(r,400)); // hold the last frame
+    rec.stop(); await done;
+    const ext=mime.indexOf('mp4')>=0?'mp4':'webm', blob=new Blob(chunks,{type:mime||'video/webm'}), url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='skin-diary-timelapse.'+ext; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
+    cap.textContent='Saved · '+list.length+' shots. Tap Share / Save to Photos if it opened in a tab.';
+  }catch(e){ cap.textContent='Could not render ('+(e.message||e.name||'error')+')'; }
+  finally{ mkBusy=false; btn.disabled=false; }
+}
+
 function bindPhotos(){
   $('#open-cam').onclick=openCam; $('#shoot').onclick=shoot; $('#cam-cancel').onclick=closeCam;
   $('#cmp-range').oninput=()=>{ const t=$('#cmp-top'); if(t) t.style.width=$('#cmp-range').value+'%'; };
   $$('.filterseg button').forEach(b=>b.onclick=()=>{ phFilter=b.dataset.f; renderPhotos(); });
-  $('#play').onclick=playTL; $('#player-close').onclick=closePlayer;
+  $('#play').onclick=playTL; $('#player-close').onclick=closePlayer; $('#player-save').onclick=makeVideo;
   $('#player').onclick=e=>{ if(e.target.id==='player') closePlayer(); };
 }
 
@@ -858,14 +939,28 @@ $('#pin-set').onclick=()=>{ if(S.photoPin){ if(confirm('Remove the Photos PIN?')
 $('#pin-unlock').onclick=()=>{ if($('#pin-entry').value===S.photoPin){ photoUnlocked=true; $('#pin-entry').value=''; renderPhotos(); } else { $('#pin-entry').value=''; $('#pin-entry').placeholder='Wrong PIN'; } };
 $('#reset-today').onclick=()=>{ delete S.days[todayKey()]; delete S.override[todayKey()]; recomputePoints(); save();
   $('#sheet').classList.remove('on'); renderToday(); renderTrends(); };
+$('#photo-restore').onclick=()=>{ if(!S.syncUrl){ syncStatus('Paste a URL first'); return; } syncStatus('Restoring…'); restorePhotos().then(()=>renderPhotos()); };
+
+/* ---------- first-run onboarding ---------- */
+function showOnboard(){ $('#ob-url').value=S.syncUrl||''; $('#ob-status').textContent=''; $('#onboard').classList.add('on'); }
+$('#ob-start').onclick=async ()=>{ const v=$('#ob-url').value.trim(); S.onboarded=true;
+  if(v){ S.syncUrl=v; rawSave(); $('#ob-status').textContent='Syncing…';
+    await pullState(); await pushState(); await restorePhotos(t=>{ $('#ob-status').textContent=t; });
+    renderToday(); renderTrends(); renderPhotos(); }
+  else rawSave();
+  $('#onboard').classList.remove('on'); };
 
 /* ---------- boot ---------- */
+if(S.onboarded===undefined) S.onboarded=!!S.firstUse; // existing installs skip onboarding
+const NEW_INSTALL=!S.firstUse;
 if(!S.firstUse){ S.firstUse=Date.now(); save(); }
 recomputePoints(); bindCheckin(); bindPhotos();
 const start=(location.hash||'#today').slice(1);
 go(['today','checkin','photos','trends','routine'].includes(start)?start:'today');
-loadPhotos().then(()=>{ if($('#v-today').classList.contains('on')) renderToday(); if($('#v-photos').classList.contains('on')) renderPhotos(); });
+loadPhotos().then(async ()=>{ if($('#v-today').classList.contains('on')) renderToday(); if($('#v-photos').classList.contains('on')) renderPhotos();
+  if(S.syncUrl && PHOTOS.length===0){ await restorePhotos(); renderPhotos(); } }); // fresh device → re-fill gallery from Drive
 if(S.syncUrl) pullState().then(()=>{ renderToday(); renderTrends(); });
+if(NEW_INSTALL && !S.onboarded) showOnboard();
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </html>
