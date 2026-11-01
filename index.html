@@ -72,6 +72,7 @@ header .date{font-size:.8rem;color:var(--muted);text-align:right;line-height:1.3
 .step.done .prod{text-decoration:line-through;text-decoration-color:var(--faint);color:var(--muted)}
 .tag{font-size:.6rem;font-weight:700;letter-spacing:.03em;padding:2px 6px;border-radius:5px;text-transform:uppercase}
 .tag.kit{background:var(--kit-soft);color:var(--kit)} .tag.key{background:var(--teal-soft);color:var(--teal)}
+.tag.warn{background:var(--warn-soft);color:var(--warn)} .tag.sw{background:var(--teal-soft);color:var(--teal)}
 .info{flex:0 0 32px;height:32px;border-radius:50%;background:var(--surface2);color:var(--muted);display:grid;
   place-items:center;font-size:.95rem;margin-top:1px}
 .detail{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line);font-size:.86rem;color:var(--muted);
@@ -346,8 +347,25 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
       <span class="muted small" id="sync-status" style="margin-left:auto"></span>
     </div>
   </div>
+  <div class="opt"><div style="flex:1">Travel mode <span class="muted small" id="trip-sum"></span></div><button class="linkish" id="open-travel">Set up</button></div>
   <div class="opt"><div style="flex:1">About</div><span class="muted small">Skin Diary · v1</span></div>
   <button class="save ghost" id="sheet-close" style="margin-top:16px">Close</button>
+</div></div>
+
+<div class="sheet" id="travelsheet"><div class="panel">
+  <h3>Travel mode</h3>
+  <p class="muted small" style="margin-top:-6px">Set your trip dates and tick what you packed. On those days Today rebuilds around your kit — keeping your weekday schedule, substituting a packed alternative where it can, and dropping what you didn't bring.</p>
+  <div style="display:flex;gap:10px;margin:14px 0">
+    <label style="flex:1;font-size:.82rem;color:var(--muted)">From<br><input type="date" id="trip-start" style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:10px;font:inherit"></label>
+    <label style="flex:1;font-size:.82rem;color:var(--muted)">To<br><input type="date" id="trip-end" style="width:100%;margin-top:4px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:10px;font:inherit"></label>
+  </div>
+  <div style="font-weight:600;margin:4px 0 2px">Packed</div>
+  <div id="packlist" style="max-height:38vh;overflow:auto"></div>
+  <div style="display:flex;gap:10px;margin-top:14px">
+    <button class="save" id="trip-save" style="flex:1">Save trip</button>
+    <button class="save ghost" id="trip-clear" style="flex:0 0 auto;width:auto;padding-left:18px;padding-right:18px">End trip</button>
+  </div>
+  <button class="save ghost" id="travel-close" style="margin-top:10px">Close</button>
 </div></div>
 
 <div class="sheet" id="player"><div class="panel" style="background:#07060a">
@@ -362,7 +380,7 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
 const ROUTINE = {
   am: [
     {id:'am-clean', role:'Cleanse, then pat dry', prod:'Freshen Cleansing Foam', kit:true,
-     note:'Switch to the gentler Glucoside foam when skin feels dry, tight or sensitive.', swap:'The Ordinary Glucoside Foaming Cleanser',
+     note:'Switch to the gentler Glucoside foam when skin feels dry, tight or sensitive.', swap:'The Ordinary Glucoside Foaming Cleanser', swapProd:'The Ordinary Glucoside Foaming Cleanser',
      adds:[{p:'Anua mist', when:'Tight or dry mornings'}]},
     {id:'am-spot', role:'Spots first — needs dry skin', prod:'Power Bright Stick', kit:true,
      note:'Swipe on manchas / dark spots while skin is still bare.'},
@@ -381,8 +399,8 @@ const ROUTINE = {
     {id:'pm-treat', role:'Treat — tonight', prod:null, treat:true},
     {id:'pm-anti', role:'Antioxidant — kit nights', prod:'AquaPro Cooler', kit:true, kitNightOnly:true,
      adds:[{p:'Medicube PDRN serum', when:'Any night, after the active'}]},
-    {id:'pm-moist', role:'Moisturise + seal', prod:'NMF + Beta Glucan',
-     note:'Switch to Bioderma Atoderm (richer) on dry nights.', swap:'Bioderma Atoderm',
+    {id:'pm-moist', role:'Moisturise + seal', prod:'NMF + Beta Glucan', travelNeed:'The Ordinary NMF + Beta Glucan',
+     note:'Switch to Bioderma Atoderm (richer) on dry nights.', swap:'Bioderma Atoderm', swapProd:'Bioderma Atoderm',
      adds:[{p:'Curél mist', when:'Dry nights'},{p:'C-kaderm', when:'On scars'}]}
   ],
   // 0=Sun .. 6=Sat
@@ -400,6 +418,10 @@ const WEEK_KINDS = ['kit','acid','mask','rest'];
 const WEEK_LABELS = {kit:'Power Clarity', acid:'Salicylic 2%', mask:'Mud mask', rest:'Rest / hydrate'};
 const DAYNAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const ESSENTIALS = ['am-spf','pm-clean']; // inner ring: morning SPF + evening cleanse
+// packable catalog for Travel mode (the physical items she'd put in a bag)
+const PRODUCTS = ['Freshen Cleansing Foam','The Ordinary Glucoside Foaming Cleanser','Medicube Zero Foam','Cleansing Oil','Micellar',
+  'Power Bright Stick','Power Clarity','Salicylic 2%','Zero Pore Pad','Mud mask','AquaPro Cooler','Medicube PDRN serum',
+  'Caffeine 5% + EGCG','The Ordinary NMF + Beta Glucan','Bioderma Atoderm','Anua mist','Curél mist','C-kaderm','Sun Protect SPF'];
 
 /* ---------- state ---------- */
 const LS = 'skindiary.v1';
@@ -466,7 +488,9 @@ function todayKey(){ return dateKey(spNow()); }
 function curSession(){ const k=todayKey(); return S.override[k] || autoSession(); }
 function isOff(prod){ return prod && S.off[prod]; }
 function nightKind(){ return wk()[spNow().getDay()]; }
-// steps that actually apply to a session today (respecting kit/acid night + products turned off)
+function travelActive(){ const t=S.trip; if(!t||!t.start||!t.end) return false; const k=todayKey(); return k>=t.start && k<=t.end; }
+function packed(name){ return !!(S.trip&&S.trip.packed&&S.trip.packed[name]); }
+// steps that actually apply to a session today (kit/acid night, products turned off, and Travel mode)
 function sessionSteps(sess){
   const night = nightKind();
   let steps = ROUTINE[sess].map(s=>Object.assign({}, s));
@@ -478,7 +502,22 @@ function sessionSteps(sess){
       else { treat.prod = night.label; treat.kit = (night.kind==='kit'); }
     }
   }
-  return steps.filter(s=> !isOff(s.prod));
+  steps = steps.filter(s=> !isOff(s.prod));
+  if(travelActive()){
+    const out=[];
+    for(const s0 of steps){ const st=Object.assign({}, s0);
+      if(st.adds) st.adds=st.adds.filter(a=>packed(a.p));
+      if(st.rest){ out.push(st); continue; }
+      if(st.id==='pm-clean'){ const have=['Cleansing Oil','Freshen Cleansing Foam','Medicube Zero Foam'].filter(packed);
+        if(have.length){ st.prod=have.join(' → '); out.push(st); } continue; }
+      const need = st.travelNeed||st.prod;
+      if(packed(need)){ out.push(st); continue; }
+      if(st.swapProd && packed(st.swapProd)){ st.prod=st.swapProd; st.swapped=true; out.push(st); continue; }
+      if(st.key){ st.missing=true; out.push(st); continue; } // SPF stays, flagged
+    }
+    return out;
+  }
+  return steps;
 }
 function allApplicable(){ // every applicable step id across both sessions today (for full ring)
   return [...sessionSteps('am'), ...sessionSteps('pm')].map(s=>s.id);
@@ -526,17 +565,20 @@ function renderToday(){
     : 'Inner ring: morning SPF + evening cleanse.';
   $('#pts').textContent = '✦ '+S.points+' pts';
   // backfill banner
-  const bf=$('#backfill'); bf.innerHTML='';
+  const bf=$('#backfill'); let bfh='';
+  if(travelActive()){ const t=S.trip;
+    bfh+='<div class="banner" style="background:var(--teal-soft);border-color:#2e4a50">✈️ Travel mode — your packed kit · '+t.start+' → '+t.end+'</div>'; }
   if(sess==='pm' && !(S.days[k]&&S.days[k].am&&S.days[k].am['am-spf'])){
-    bf.innerHTML='<div class="banner">Morning not logged yet. <button id="go-am">Log Morning</button></div>';
-    $('#go-am').onclick=()=>{ S.override[k]='am'; save(); renderToday(); };
-  }
+    bfh+='<div class="banner">Morning not logged yet. <button id="go-am">Log Morning</button></div>'; }
+  bf.innerHTML=bfh;
+  const gam=$('#go-am'); if(gam) gam.onclick=()=>{ S.override[k]='am'; save(); renderToday(); };
   // steps
   const steps=sessionSteps(sess), done=steps.filter(s=>isDone(sess,s.id)).length;
   const list=$('#steplist'); list.innerHTML='';
   steps.forEach(s=>{
     const li=document.createElement('li'); li.className='step'+(isDone(sess,s.id)?' done':'');
-    const tags=(s.kit?'<span class="tag kit">kit</span>':'')+(s.key?'<span class="tag key">never skip</span>':'');
+    const tags=(s.kit?'<span class="tag kit">kit</span>':'')+(s.key?'<span class="tag key">never skip</span>':'')
+      +(s.swapped?'<span class="tag sw">swapped</span>':'')+(s.missing?'<span class="tag warn">⚠ not packed</span>':'');
     let detail='';
     if(s.note) detail+='<div class="row">'+s.note+'</div>';
     if(s.swap) detail+='<div class="row"><span class="swap">🔄 Switch:</span> '+s.swap+'</div>';
@@ -723,7 +765,7 @@ function go(v){ $$('.view').forEach(s=>s.classList.remove('on')); $('#v-'+v).cla
 $$('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
 $('#seg-am').onclick=()=>{ S.override[todayKey()]='am'; save(); renderToday(); };
 $('#seg-pm').onclick=()=>{ S.override[todayKey()]='pm'; save(); renderToday(); };
-$('#gear').onclick=()=>{ $('#sync-url').value=S.syncUrl||'';
+$('#gear').onclick=()=>{ $('#sync-url').value=S.syncUrl||''; updateTripSum();
   syncStatus(S.lastSync?('Last synced '+new Date(S.lastSync).toLocaleString()):(S.syncUrl?'Connected':'Not connected'));
   $('#sheet').classList.add('on'); };
 $('#sync-save').onclick=()=>{ const v=$('#sync-url').value.trim(); S.syncUrl=v; rawSave();
@@ -732,6 +774,21 @@ $('#sync-now').onclick=()=>{ if(!S.syncUrl){ syncStatus('Paste a URL first'); re
   syncStatus('Syncing…'); pullState().then(()=>pushState()).then(()=>backupPhotos()).then(()=>renderToday()); };
 $('#sheet-close').onclick=()=>$('#sheet').classList.remove('on');
 $('#sheet').onclick=e=>{ if(e.target.id==='sheet') $('#sheet').classList.remove('on'); };
+/* travel mode */
+function updateTripSum(){ const el=$('#trip-sum'); if(el) el.textContent=(S.trip&&S.trip.start)?('· '+S.trip.start+' → '+S.trip.end):''; }
+function renderPackList(){ const pl=$('#packlist'); pl.innerHTML=''; const pk=(S.trip&&S.trip.packed)||{};
+  PRODUCTS.forEach(p=>{ const row=document.createElement('label'); row.className='opt'; row.style.padding='9px 0'; row.style.cursor='pointer';
+    row.innerHTML='<div style="flex:1">'+p+'</div><input type="checkbox" '+(pk[p]?'checked':'')+' data-p="'+p+'" style="width:22px;height:22px;accent-color:var(--teal)">';
+    pl.appendChild(row); }); }
+$('#open-travel').onclick=()=>{ const t=S.trip||{}; $('#trip-start').value=t.start||''; $('#trip-end').value=t.end||'';
+  renderPackList(); $('#travelsheet').classList.add('on'); };
+$('#travel-close').onclick=()=>$('#travelsheet').classList.remove('on');
+$('#travelsheet').onclick=e=>{ if(e.target.id==='travelsheet') $('#travelsheet').classList.remove('on'); };
+$('#trip-save').onclick=()=>{ const start=$('#trip-start').value, end=$('#trip-end').value;
+  if(!start||!end){ alert('Pick both dates.'); return; } if(end<start){ alert('End date is before the start.'); return; }
+  const packed={}; $$('#packlist input').forEach(c=>{ if(c.checked) packed[c.dataset.p]=true; });
+  S.trip={start,end,packed}; save(); updateTripSum(); $('#travelsheet').classList.remove('on'); renderToday(); };
+$('#trip-clear').onclick=()=>{ S.trip=null; save(); updateTripSum(); renderPackList(); $('#travelsheet').classList.remove('on'); renderToday(); };
 $('#reset-today').onclick=()=>{ delete S.days[todayKey()]; delete S.override[todayKey()]; recomputePoints(); save();
   $('#sheet').classList.remove('on'); renderToday(); renderTrends(); };
 
