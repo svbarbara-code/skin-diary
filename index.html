@@ -405,7 +405,7 @@ const ESSENTIALS = ['am-spf','pm-clean']; // inner ring: morning SPF + evening c
 const LS = 'skindiary.v1';
 let S = load();
 function load(){ try{ return JSON.parse(localStorage.getItem(LS)) || fresh(); }catch(e){ return fresh(); } }
-function fresh(){ return {days:{}, checkins:{}, points:0, week:null, off:{}, override:{}, syncUrl:'', deviceId:null, firstUse:null, lastSync:0}; }
+function fresh(){ return {days:{}, checkins:{}, points:0, week:null, off:{}, override:{}, syncUrl:'', deviceId:null, firstUse:null, lastSync:0, photoSynced:{}}; }
 function rawSave(){ try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){} }
 function save(){ rawSave(); scheduleSync(); }
 
@@ -433,6 +433,11 @@ function mergeState(remote){ applyingRemote=true;
   if(remote.firstUse&&(!S.firstUse||remote.firstUse<S.firstUse)) S.firstUse=remote.firstUse;
   recomputePoints(); rawSave(); applyingRemote=false;
 }
+async function uploadPhoto(p){ if(!S.syncUrl||!p) return; S.photoSynced=S.photoSynced||{}; if(S.photoSynced[p.id]) return;
+  try{ const r=await fetch(S.syncUrl,{method:'POST',body:JSON.stringify({action:'photo',id:p.id,date:p.date,session:p.session,data:p.data})});
+    const j=await r.json(); if(j&&j.ok){ S.photoSynced[p.id]=true; rawSave(); } }catch(e){}
+}
+async function backupPhotos(){ if(!S.syncUrl) return; for(const p of PHOTOS){ await uploadPhoto(p); } syncStatus('Photos backed up'); }
 // merge any user edits to the weekly grid over the default
 function wk(){ const w = Object.assign({}, ROUTINE.week); if(S.week) for(const k in S.week){ w[k]=Object.assign({}, w[k], S.week[k]); } return w; }
 
@@ -661,7 +666,7 @@ async function shoot(){ const v=$('#cam'); if(!v.videoWidth){ return; }
   const data=c.toDataURL('image/jpeg',0.82);
   const now=spNow(); const p={id:'p'+Date.now(), date:dateKey(now), session:camSession, ts:Date.now(), data};
   try{ await photoAdd(p); }catch(e){ alert('Could not save photo (storage full?).'); return; }
-  S.firstUse=S.firstUse||Date.now(); save(); await loadPhotos(); closeCam(); renderPhotos();
+  S.firstUse=S.firstUse||Date.now(); save(); uploadPhoto(p); await loadPhotos(); closeCam(); renderPhotos();
 }
 
 /* gallery + before/after */
@@ -722,9 +727,9 @@ $('#gear').onclick=()=>{ $('#sync-url').value=S.syncUrl||'';
   syncStatus(S.lastSync?('Last synced '+new Date(S.lastSync).toLocaleString()):(S.syncUrl?'Connected':'Not connected'));
   $('#sheet').classList.add('on'); };
 $('#sync-save').onclick=()=>{ const v=$('#sync-url').value.trim(); S.syncUrl=v; rawSave();
-  if(v){ syncStatus('Syncing…'); pullState().then(()=>pushState()).then(()=>renderToday()); } else syncStatus('Sync off'); };
+  if(v){ syncStatus('Syncing…'); pullState().then(()=>pushState()).then(()=>backupPhotos()).then(()=>renderToday()); } else syncStatus('Sync off'); };
 $('#sync-now').onclick=()=>{ if(!S.syncUrl){ syncStatus('Paste a URL first'); return; }
-  syncStatus('Syncing…'); pullState().then(()=>pushState()).then(()=>renderToday()); };
+  syncStatus('Syncing…'); pullState().then(()=>pushState()).then(()=>backupPhotos()).then(()=>renderToday()); };
 $('#sheet-close').onclick=()=>$('#sheet').classList.remove('on');
 $('#sheet').onclick=e=>{ if(e.target.id==='sheet') $('#sheet').classList.remove('on'); };
 $('#reset-today').onclick=()=>{ delete S.days[todayKey()]; delete S.override[todayKey()]; recomputePoints(); save();
