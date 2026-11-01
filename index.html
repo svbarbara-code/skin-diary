@@ -92,28 +92,38 @@ h2.sec{font-family:var(--display);font-weight:600;font-size:1.15rem;margin:22px 
 .muted{color:var(--muted)} .small{font-size:.85rem}
 
 /* check-in — tappable clay-face map */
-.facewrap{position:relative;width:100%;max-width:272px;margin:8px auto 2px;
+.facewrap{position:relative;width:100%;max-width:278px;margin:8px auto 2px;
   -webkit-user-select:none;user-select:none;touch-action:manipulation}
 .facewrap img{display:block;width:100%;height:auto;border-radius:16px;pointer-events:none;-webkit-user-drag:none}
-.zone{position:absolute;transform:translate(-50%,-50%);border-radius:50%;padding:0;cursor:pointer;color:var(--muted);
-  background:rgba(255,255,255,.05);border:1.6px solid rgba(255,255,255,.26);
+.zone{position:absolute;transform:translate(-50%,-50%);border-radius:50%;padding:0;cursor:pointer;
+  background:rgba(255,255,255,.04);border:1.4px solid rgba(255,255,255,.22);
   -webkit-tap-highlight-color:transparent;transition:background .14s,border-color .14s,box-shadow .14s}
-.zone::after{content:"";position:absolute;left:50%;top:50%;width:11px;height:11px;border-radius:50%;
-  background:currentColor;box-shadow:0 0 0 3px var(--bg);transform:translate(-50%,-50%) scale(0);transition:transform .16s}
-.zone:hover,.zone:focus-visible{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.7);outline:none}
-.zone:focus-visible{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--teal)}
-.zone.on{border-style:solid;border-width:2.5px}
-.zone.on::after{transform:translate(-50%,-50%) scale(1)}
-.zone.breakout{color:var(--danger);border-color:var(--danger);background:rgba(229,138,138,.22)}
-.zone.spot{color:var(--warn);border-color:var(--warn);background:rgba(227,168,103,.22)}
-.zone.dryness{color:var(--teal);border-color:var(--teal);background:rgba(127,188,198,.20)}
-.typepick{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.zone:hover,.zone:focus-visible{background:rgba(255,255,255,.13);border-color:rgba(255,255,255,.7);outline:none;z-index:4}
+.zone:focus-visible{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--teal);z-index:6}
+.zone.on{border-color:rgba(255,255,255,.85);background:rgba(255,255,255,.08);z-index:3}
+.zone.sel{border-color:var(--teal);background:rgba(127,188,198,.14);z-index:5}
+/* colored-dot cluster — one dot per issue on a zone */
+.dots{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;flex-wrap:wrap;
+  gap:3px;justify-content:center;align-items:center;max-width:84%;pointer-events:none}
+.dot{width:9px;height:9px;border-radius:50%;box-shadow:0 0 0 2px var(--bg)}
+.dot.breakout{background:#e58a8a}.dot.spot{background:#e3a867}.dot.dryness{background:#7fbcc6}
+.dot.oiliness{background:#e8d06a}.dot.redness{background:#e08fc0}.dot.congestion{background:#9aa6c4}
+.dot.flaking{background:#c3abe6}
+/* type picker — header + multi-select chips */
+.typepick{margin-top:10px}
 .typepick[hidden]{display:none}
-.typepick button{padding:8px 14px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);
-  font-size:.85rem;font-weight:600}
-.typepick button.breakout.sel{background:#5a2c2c;border-color:var(--danger);color:#f3c9c9}
-.typepick button.spot.sel{background:#4a3a16;border-color:var(--warn);color:#f0d6a6}
-.typepick button.dryness.sel{background:#1f3a3f;border-color:var(--teal);color:#b9e2e8}
+.tp-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding:0 2px}
+.tp-head span{font-weight:700;font-size:.92rem;color:var(--ink)}
+.tp-done{padding:6px 14px;border-radius:999px;background:var(--teal-soft);border:1px solid var(--teal);
+  color:var(--teal);font-weight:700;font-size:.8rem}
+.tp-chips{display:flex;gap:7px;justify-content:center;flex-wrap:wrap}
+.tp-chips button{padding:7px 13px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);
+  font-size:.82rem;font-weight:600;color:var(--muted)}
+.tp-chips button.sel{color:#15121a;border-color:transparent}
+.tp-chips button.breakout.sel{background:#e58a8a}.tp-chips button.spot.sel{background:#e3a867}
+.tp-chips button.dryness.sel{background:#7fbcc6}.tp-chips button.oiliness.sel{background:#e8d06a}
+.tp-chips button.redness.sel{background:#e08fc0}.tp-chips button.congestion.sel{background:#9aa6c4}
+.tp-chips button.flaking.sel{background:#c3abe6}
 .score{display:flex;gap:8px;margin-top:10px}
 .score button{flex:1;height:48px;border-radius:12px;background:var(--surface2);border:1px solid var(--line);
   font-weight:700;font-size:1.05rem;color:var(--muted)}
@@ -153,6 +163,17 @@ textarea{width:100%;margin-top:10px;background:var(--surface2);border:1px solid 
 .rlist li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
 .rlist li:last-child{border-bottom:0}
 .rlist .p{flex:1} .rlist .p small{color:var(--faint);display:block;font-size:.72rem;text-transform:uppercase;letter-spacing:.05em}
+.shelf{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.shelf li{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px;position:relative}
+.shelf li.retired{opacity:.45}
+.shelf .thumb{width:100%;aspect-ratio:1/1;border-radius:10px;background:#fff;object-fit:contain}
+.shelf .thumb.none{display:grid;place-items:center;color:var(--faint);font-size:.72rem;text-align:center;background:var(--surface2);padding:6px}
+.shelf .nm{font-weight:600;font-size:.84rem;margin-top:8px;line-height:1.25}
+.shelf .br{font-size:.68rem;text-transform:uppercase;letter-spacing:.05em;color:var(--faint);margin-top:2px}
+.shelf .pr{font-size:.9rem;font-weight:700;color:var(--teal);margin-top:6px}
+.shelf .xtra{font-size:.72rem;color:var(--muted);margin-top:4px}
+.shelf .flag{font-size:.72rem;color:var(--rose);margin-top:4px}
+.shelf .offbadge{position:absolute;top:8px;right:8px;font-size:.6rem;text-transform:uppercase;letter-spacing:.05em;background:var(--surface2);color:var(--faint);padding:2px 6px;border-radius:999px}
 .toggle{width:46px;height:28px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);
   position:relative;flex:0 0 auto}
 .toggle::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;
@@ -295,6 +316,10 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
     <h2 class="sec">Evening</h2>
     <ul class="rlist" id="r-pm"></ul>
     <p class="muted small" style="margin-top:10px">Toggle a product off to retire it (ran out / stopped) — it drops from the plan and from packing.</p>
+
+    <h2 class="sec">Shelf — photos &amp; prices</h2>
+    <p class="muted small" style="margin-top:-6px">What each product looks like and what it costs. Prices in BRL, checked <span id="price-asof"></span>.</p>
+    <ul class="shelf" id="r-shelf"></ul>
 
     <h2 class="sec">Your extra products</h2>
     <ul class="rlist" id="r-custom"></ul>
@@ -463,6 +488,31 @@ const ESSENTIALS = ['am-spf','pm-clean']; // inner ring: morning SPF + evening c
 const PRODUCTS = ['Freshen Cleansing Foam','The Ordinary Glucoside Foaming Cleanser','Medicube Zero Foam','Cleansing Oil','Micellar',
   'Power Bright Stick','Power Clarity','Salicylic 2%','Zero Pore Pad','Mud mask','AquaPro Cooler','Medicube PDRN serum',
   'Caffeine 5% + EGCG','The Ordinary NMF + Beta Glucan','Bioderma Atoderm','Anua mist','Curél mist','C-kaderm','Sun Protect SPF'];
+// photo + current street price per product. img = file under products/<slug>.webp. Prices in BRL, checked on PRICE_ASOF.
+// Reference thumbnails only (brand assets, used in this private noindex app). Two items (Mud mask, Sun Protect SPF) await a brand.
+const PRICE_ASOF = '1 Nov 2026';
+const PRODUCT_INFO = {
+  'Freshen Cleansing Foam':                {brand:'The Joy Lab', full:'Freshen Cleansing Foam',                         img:'joylab-freshen-foam',       price:'R$ 89,90'},
+  'The Ordinary Glucoside Foaming Cleanser':{brand:'The Ordinary', full:'Glucoside Foaming Cleanser',                   img:'to-glucoside',              price:'R$ 125,00'},
+  'Medicube Zero Foam':                    {brand:'Medicube', full:'Zero Pore Pink Foam Cleanser 120g',                 img:'medicube-zero-foam',        price:'R$ 219,89'},
+  'Cleansing Oil':                         {brand:'The Joy Lab', full:'Freshen Cleansing Oil',                          img:'joylab-cleansing-oil',      price:'R$ 219,90', note:'out of stock on the site right now'},
+  'Micellar':                              {brand:'Bioderma', full:'Sensibio H2O Água Micelar 250 ml',                  img:'bioderma-sensibio-h2o',     price:'R$ 164,00'},
+  'Power Bright Stick':                    {brand:'The Joy Lab', full:'Power Bright Stick',                             img:'joylab-power-bright-stick', price:'R$ 146,00'},
+  'Power Clarity':                         {brand:'The Joy Lab', full:'Power Clarity Sérum Clareador',                  img:'joylab-power-clarity',      price:'R$ 191,00'},
+  'Salicylic 2%':                          {brand:'The Ordinary', full:'Salicylic Acid 2% Solution',                   img:'to-salicylic',              price:'R$ 79,00'},
+  'Zero Pore Pad':                         {brand:'Medicube', full:'Zero Pore Pad 2.0 (70 un)',                        img:'medicube-zero-pore-pad',    price:'R$ 279,00'},
+  'Mud mask':                              {brand:'', full:'', img:null, note:'brand not identified yet — tell me which mud mask'},
+  'AquaPro Cooler':                        {brand:'The Joy Lab', full:'AquaPro Cooler Antioxidante',                   img:'joylab-aquapro-cooler',     price:'R$ 153,00'},
+  'Medicube PDRN serum':                   {brand:'Medicube', full:'PDRN Pink Peptide Serum 30 ml',                    img:'medicube-pdrn-serum',       price:'R$ 294,00', note:'price varies R$160–294 by seller'},
+  'Caffeine 5% + EGCG':                    {brand:'The Ordinary', full:'Caffeine Solution 5% + EGCG',                  img:'to-caffeine',               price:'R$ 102,00'},
+  'The Ordinary NMF + Beta Glucan':        {brand:'The Ordinary', full:'Natural Moisturizing Factors + Beta Glucan 100 ml', img:'to-nmf-beta-glucan',   price:'R$ 125,00'},
+  'Bioderma Atoderm':                      {brand:'Bioderma', full:'Atoderm Intensive Baume 200 ml',                   img:'bioderma-atoderm-baume',    price:'R$ 149,90'},
+  'Anua mist':                             {brand:'Anua', full:'PDRN Hyaluronic Acid Hydrating Capsule Mist 100 ml',   img:'anua-pdrn-mist',            price:'R$ 280,00'},
+  'Curél mist':                            {brand:'Curél', full:'Deep Moisture Spray',                                 img:'curel-deep-moisture',       price:'R$ 188,00'},
+  'C-kaderm':                              {brand:'Mantecorp Skincare', full:'C-Kaderm Silicone Scar Gel 20 g',        img:'ckaderm',                   price:'R$ 188,89'},
+  'Sun Protect SPF':                       {brand:'', full:'', img:null, note:'brand not identified yet — which sunscreen?'}
+};
+function prodInfo(name){ return PRODUCT_INFO[name] || null; }
 
 /* ---------- state ---------- */
 const LS = 'skindiary.v1';
@@ -715,6 +765,25 @@ function renderRoutine(){
     const onb=$('#np-when button.on'); const when=onb?onb.dataset.w:'am'; const note=$('#np-note').value.trim();
     S.customProducts=S.customProducts||[]; S.customProducts.push({id:'c'+Date.now(), name:name, when:when, note:note});
     $('#np-name').value=''; $('#np-note').value=''; save(); renderRoutine(); renderToday(); };
+  renderShelf();
+}
+function renderShelf(){
+  const el=$('#price-asof'); if(el) el.textContent=PRICE_ASOF;
+  const ul=$('#r-shelf'); if(!ul) return; ul.innerHTML='';
+  PRODUCTS.forEach(name=>{
+    const info=prodInfo(name)||{}; const off=isOff(name);
+    const li=document.createElement('li'); if(off) li.className='retired';
+    const thumb = info.img
+      ? '<img class="thumb" loading="lazy" src="products/'+info.img+'.webp" alt="'+(info.full||name)+'">'
+      : '<div class="thumb none">no photo yet</div>';
+    li.innerHTML = thumb
+      + '<div class="nm">'+(info.full||name)+'</div>'
+      + (info.brand?'<div class="br">'+info.brand+'</div>':'')
+      + (info.price?'<div class="pr">'+info.price+'</div>':'')
+      + (info.note?'<div class="'+(info.img?'xtra':'flag')+'">'+info.note+'</div>':'')
+      + (off?'<div class="offbadge">retired</div>':'');
+    ul.appendChild(li);
+  });
 }
 function packCatalog(){ return [...PRODUCTS, ...(S.customProducts||[]).map(c=>c.name)].filter(n=>!isOff(n)); }
 
