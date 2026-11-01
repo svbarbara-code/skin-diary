@@ -336,7 +336,17 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
   <h3>Settings</h3>
   <div class="opt"><div style="flex:1">Location for sunset<br><span class="muted small">São Paulo (−3). Edit comes later.</span></div></div>
   <div class="opt"><div style="flex:1">Reset today's check-offs</div><button class="linkish" id="reset-today">Reset</button></div>
-  <div class="opt"><div style="flex:1">About</div><span class="muted small">Skin Diary · v1 · on-device</span></div>
+  <div class="opt" style="flex-direction:column;align-items:stretch;gap:8px">
+    <div>Back up to Saúde DB <span class="muted small">— paste the web-app URL</span></div>
+    <input id="sync-url" type="url" inputmode="url" placeholder="https://script.google.com/…/exec"
+      style="background:var(--surface2);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:11px;font:inherit">
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="linkish" id="sync-save">Save &amp; sync</button>
+      <button class="linkish" id="sync-now" style="color:var(--muted)">Sync now</button>
+      <span class="muted small" id="sync-status" style="margin-left:auto"></span>
+    </div>
+  </div>
+  <div class="opt"><div style="flex:1">About</div><span class="muted small">Skin Diary · v1</span></div>
   <button class="save ghost" id="sheet-close" style="margin-top:16px">Close</button>
 </div></div>
 
@@ -395,8 +405,34 @@ const ESSENTIALS = ['am-spf','pm-clean']; // inner ring: morning SPF + evening c
 const LS = 'skindiary.v1';
 let S = load();
 function load(){ try{ return JSON.parse(localStorage.getItem(LS)) || fresh(); }catch(e){ return fresh(); } }
-function fresh(){ return {days:{}, checkins:{}, points:0, week:null, off:{}, override:{}}; }
-function save(){ try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){} }
+function fresh(){ return {days:{}, checkins:{}, points:0, week:null, off:{}, override:{}, syncUrl:'', deviceId:null, firstUse:null, lastSync:0}; }
+function rawSave(){ try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){} }
+function save(){ rawSave(); scheduleSync(); }
+
+/* ---------- cloud sync (Apps Script → Saúde DB) ---------- */
+let syncTimer=null, applyingRemote=false;
+function deviceId(){ if(!S.deviceId){ S.deviceId='mini-'+Math.random().toString(36).slice(2,8); rawSave(); } return S.deviceId; }
+function syncStatus(t){ const el=document.getElementById('sync-status'); if(el) el.textContent=t; }
+function scheduleSync(){ if(!S.syncUrl||applyingRemote) return; clearTimeout(syncTimer); syncTimer=setTimeout(pushState,1500); }
+async function pushState(){ if(!S.syncUrl) return; const blob=Object.assign({}, S); delete blob.syncUrl;
+  try{ const r=await fetch(S.syncUrl,{method:'POST',body:JSON.stringify({deviceId:deviceId(),state:blob})});
+    const j=await r.json(); if(j&&j.ok){ S.lastSync=Date.now(); rawSave(); syncStatus('Synced '+new Date().toLocaleTimeString()); }
+    else syncStatus('Sync error'); }
+  catch(e){ syncStatus('Offline — will retry'); }
+}
+async function pullState(){ if(!S.syncUrl) return;
+  try{ const u=S.syncUrl+(S.syncUrl.indexOf('?')>=0?'&':'?')+'deviceId='+encodeURIComponent(deviceId());
+    const r=await fetch(u); const j=await r.json(); if(j&&j.ok&&j.state) mergeState(j.state); }catch(e){}
+}
+function mergeState(remote){ applyingRemote=true;
+  for(const k in (remote.days||{})){ if(!S.days[k]) S.days[k]=remote.days[k];
+    else ['am','pm'].forEach(s=>{ S.days[k][s]=Object.assign({}, remote.days[k][s]||{}, S.days[k][s]||{}); }); }
+  for(const k in (remote.checkins||{})){ const rr=remote.checkins[k], l=S.checkins[k]; if(!l||((rr.ts||0)>(l.ts||0))) S.checkins[k]=rr; }
+  if(remote.week) S.week=Object.assign({}, remote.week, S.week||{});
+  S.off=Object.assign({}, remote.off||{}, S.off||{});
+  if(remote.firstUse&&(!S.firstUse||remote.firstUse<S.firstUse)) S.firstUse=remote.firstUse;
+  recomputePoints(); rawSave(); applyingRemote=false;
+}
 // merge any user edits to the weekly grid over the default
 function wk(){ const w = Object.assign({}, ROUTINE.week); if(S.week) for(const k in S.week){ w[k]=Object.assign({}, w[k], S.week[k]); } return w; }
 
@@ -682,7 +718,13 @@ function go(v){ $$('.view').forEach(s=>s.classList.remove('on')); $('#v-'+v).cla
 $$('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
 $('#seg-am').onclick=()=>{ S.override[todayKey()]='am'; save(); renderToday(); };
 $('#seg-pm').onclick=()=>{ S.override[todayKey()]='pm'; save(); renderToday(); };
-$('#gear').onclick=()=>$('#sheet').classList.add('on');
+$('#gear').onclick=()=>{ $('#sync-url').value=S.syncUrl||'';
+  syncStatus(S.lastSync?('Last synced '+new Date(S.lastSync).toLocaleString()):(S.syncUrl?'Connected':'Not connected'));
+  $('#sheet').classList.add('on'); };
+$('#sync-save').onclick=()=>{ const v=$('#sync-url').value.trim(); S.syncUrl=v; rawSave();
+  if(v){ syncStatus('Syncing…'); pullState().then(()=>pushState()).then(()=>renderToday()); } else syncStatus('Sync off'); };
+$('#sync-now').onclick=()=>{ if(!S.syncUrl){ syncStatus('Paste a URL first'); return; }
+  syncStatus('Syncing…'); pullState().then(()=>pushState()).then(()=>renderToday()); };
 $('#sheet-close').onclick=()=>$('#sheet').classList.remove('on');
 $('#sheet').onclick=e=>{ if(e.target.id==='sheet') $('#sheet').classList.remove('on'); };
 $('#reset-today').onclick=()=>{ delete S.days[todayKey()]; delete S.override[todayKey()]; recomputePoints(); save();
@@ -694,6 +736,7 @@ recomputePoints(); bindCheckin(); bindPhotos();
 const start=(location.hash||'#today').slice(1);
 go(['today','checkin','photos','trends','routine'].includes(start)?start:'today');
 loadPhotos().then(()=>{ if($('#v-today').classList.contains('on')) renderToday(); if($('#v-photos').classList.contains('on')) renderPhotos(); });
+if(S.syncUrl) pullState().then(()=>{ renderToday(); renderTrends(); });
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </html>
