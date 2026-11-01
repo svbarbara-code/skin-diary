@@ -150,6 +150,27 @@ textarea{width:100%;margin-top:10px;background:var(--surface2);border:1px solid 
 .toggle.on{background:var(--teal-soft);border-color:var(--teal)}
 .toggle.on::after{left:20px;background:var(--teal)}
 
+/* photos */
+.cambox{position:relative;border-radius:14px;overflow:hidden;background:#000;aspect-ratio:3/4}
+.cambox video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#ghost{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.33;pointer-events:none;transform:scaleX(-1)}
+.camrow{display:flex;align-items:center;justify-content:space-between;margin-top:12px}
+.shutter{width:62px;height:62px;border-radius:50%;background:#fff;border:4px solid var(--teal)}
+.shutter:active{transform:scale(.94)}
+.pill-btn{padding:10px 14px;border-radius:999px;background:var(--surface2);border:1px solid var(--line);font-weight:600;font-size:.85rem;color:var(--muted)}
+.filterseg{display:flex;gap:6px;margin:4px 0 10px}
+.filterseg button{flex:1;padding:8px;border-radius:10px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-weight:600;font-size:.82rem}
+.filterseg button.on{background:var(--teal-soft);border-color:var(--teal);color:var(--teal)}
+.compare{position:relative;aspect-ratio:3/4;border-radius:14px;overflow:hidden;background:#000;margin-top:4px}
+.compare .cmp-full{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cmp-top{position:absolute;top:0;left:0;height:100%;overflow:hidden;border-right:2px solid #fff;width:50%}
+.cmp-top img{position:absolute;top:0;left:0;object-fit:cover}
+#cmp-range{width:100%;margin-top:10px;accent-color:var(--teal)}
+.cmp-dates{display:flex;justify-content:space-between;font-size:.78rem;color:var(--muted);margin-top:4px}
+.thumbs{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-top:4px;-webkit-overflow-scrolling:touch}
+.thumb{flex:0 0 62px;height:82px;border-radius:10px;background-size:cover;background-position:center;border:1px solid var(--line)}
+.thumb.sel{border-color:var(--teal);box-shadow:0 0 0 2px var(--teal)}
+
 /* tab bar */
 nav{position:fixed;left:0;right:0;bottom:0;z-index:10;background:rgba(23,21,28,.92);backdrop-filter:blur(10px);
   border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -267,11 +288,46 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
     <p class="muted small" style="margin-top:14px">Toggle a product off if you've run out — it drops from the plan until you switch it back.
       Deeper editing (adding products, add-ons) comes next.</p>
   </section>
+
+  <!-- PHOTOS -->
+  <section class="view" id="v-photos">
+    <h2 class="sec">Progress photos</h2>
+    <div id="cam-wrap" class="card" style="display:none">
+      <div class="cambox"><video id="cam" playsinline autoplay muted></video><div id="ghost"></div></div>
+      <div class="camrow">
+        <button class="pill-btn" id="cam-sess"></button>
+        <button class="shutter" id="shoot" aria-label="Capture"></button>
+        <button class="pill-btn" id="cam-cancel">Cancel</button>
+      </div>
+    </div>
+    <button class="save" id="open-cam">📷 Take today's photo</button>
+    <p id="ph-empty" class="muted small" style="margin-top:12px"></p>
+
+    <div id="compare" style="display:none">
+      <h2 class="sec">Before / after</h2>
+      <div class="compare" id="cmp"></div>
+      <input type="range" id="cmp-range" min="0" max="100" value="50" aria-label="Compare slider">
+      <div class="cmp-dates"><span id="cmp-a"></span><span id="cmp-b"></span></div>
+    </div>
+
+    <div id="ph-gallery-wrap" style="display:none">
+      <h2 class="sec">All shots <span id="ph-count" class="muted" style="font-weight:400"></span></h2>
+      <div class="filterseg">
+        <button data-f="all" class="on">All</button>
+        <button data-f="am">Morning</button>
+        <button data-f="pm">Evening</button>
+      </div>
+      <div class="thumbs" id="thumbs"></div>
+      <button class="save ghost" id="play" style="margin-top:12px">▶ Play timelapse</button>
+      <p class="muted small" style="margin-top:8px">Photos stay on this phone. A shareable video can be rendered on request.</p>
+    </div>
+  </section>
 </div>
 
 <nav><div class="in">
   <button class="on" data-v="today"><span class="ic">☀︎</span>Today</button>
   <button data-v="checkin"><span class="ic">✎</span>Check-in</button>
+  <button data-v="photos"><span class="ic">📷</span>Photos</button>
   <button data-v="trends"><span class="ic">📈</span>Trends</button>
   <button data-v="routine"><span class="ic">🗓</span>Routine</button>
 </div></nav>
@@ -282,6 +338,12 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
   <div class="opt"><div style="flex:1">Reset today's check-offs</div><button class="linkish" id="reset-today">Reset</button></div>
   <div class="opt"><div style="flex:1">About</div><span class="muted small">Skin Diary · v1 · on-device</span></div>
   <button class="save ghost" id="sheet-close" style="margin-top:16px">Close</button>
+</div></div>
+
+<div class="sheet" id="player"><div class="panel" style="background:#07060a">
+  <img id="player-img" alt="" style="width:100%;border-radius:12px;display:block;background:#000;aspect-ratio:3/4;object-fit:cover">
+  <p id="player-cap" class="muted small" style="text-align:center;margin:10px 0 0"></p>
+  <button class="save ghost" id="player-close" style="margin-top:12px">Close</button>
 </div></div>
 
 <script>
@@ -527,13 +589,94 @@ function drawSpark(){ const c=$('#spark'), x=c.getContext('2d'); x.clearRect(0,0
   const last=vals[vals.length-1]; $('#spark-lbl').textContent='Latest: '+last+'/5 · '+vals.length+' check-ins logged.';
 }
 
-/* ---------- photo nudge (placeholder until Phase 2) ---------- */
-function photoDue(){ return false; }
+/* ---------- photos (Phase 2): local IndexedDB, capture w/ ghost overlay, before/after, timelapse ---------- */
+let PDB=null, PHOTOS=[], PH_LOADED=false;
+function idb(){ return new Promise((res,rej)=>{ if(PDB) return res(PDB);
+  let r; try{ r=indexedDB.open('skindiary',1); }catch(e){ return rej(e); }
+  r.onupgradeneeded=()=>{ if(!r.result.objectStoreNames.contains('photos')) r.result.createObjectStore('photos',{keyPath:'id'}); };
+  r.onsuccess=()=>{ PDB=r.result; res(PDB); }; r.onerror=()=>rej(r.error); }); }
+async function photoAdd(p){ const db=await idb(); return new Promise((res,rej)=>{ const t=db.transaction('photos','readwrite');
+  t.objectStore('photos').put(p); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); }
+async function photoAllRaw(){ const db=await idb(); return new Promise((res,rej)=>{ const r=db.transaction('photos').objectStore('photos').getAll();
+  r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); }); }
+async function photoDel(id){ const db=await idb(); return new Promise(res=>{ const t=db.transaction('photos','readwrite'); t.objectStore('photos').delete(id); t.oncomplete=()=>res(); }); }
+async function loadPhotos(){ try{ PHOTOS=(await photoAllRaw()).sort((a,b)=>a.ts-b.ts); }catch(e){ PHOTOS=[]; } PH_LOADED=true; }
+function lastPhoto(){ return PHOTOS.length?PHOTOS[PHOTOS.length-1]:null; }
+function photoDue(){ if(!PH_LOADED) return false; const lp=lastPhoto();
+  const since = lp ? lp.ts : (S.firstUse||Date.now()); return (Date.now()-since) > 7*86400000; }
+
+/* camera */
+let camStream=null, camSession='am';
+async function openCam(){ camSession=curSession();
+  $('#cam-sess').textContent = camSession==='am'?'☀︎ Morning':'☾ Evening';
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ alert('Camera not available in this browser.'); return; }
+  try{ camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1080},height:{ideal:1440}},audio:false}); }
+  catch(e){ alert('Camera unavailable: '+(e.message||e.name)); return; }
+  const v=$('#cam'); v.srcObject=camStream;
+  $('#cam-wrap').style.display='block'; $('#open-cam').style.display='none';
+  const g=$('#ghost'), lp=lastPhoto();
+  g.style.display=lp?'block':'none'; if(lp) g.style.backgroundImage='url('+lp.data+')';
+}
+function closeCam(){ if(camStream){ camStream.getTracks().forEach(t=>t.stop()); camStream=null; }
+  $('#cam-wrap').style.display='none'; $('#open-cam').style.display=''; }
+async function shoot(){ const v=$('#cam'); if(!v.videoWidth){ return; }
+  const w=v.videoWidth, h=v.videoHeight, c=document.createElement('canvas'); c.width=w; c.height=h;
+  const x=c.getContext('2d'); x.translate(w,0); x.scale(-1,1); x.drawImage(v,0,0,w,h); // mirror selfie
+  const data=c.toDataURL('image/jpeg',0.82);
+  const now=spNow(); const p={id:'p'+Date.now(), date:dateKey(now), session:camSession, ts:Date.now(), data};
+  try{ await photoAdd(p); }catch(e){ alert('Could not save photo (storage full?).'); return; }
+  S.firstUse=S.firstUse||Date.now(); save(); await loadPhotos(); closeCam(); renderPhotos();
+}
+
+/* gallery + before/after */
+let phFilter='all', cmpA=null, cmpB=null;
+async function renderPhotos(){ if(!PH_LOADED) await loadPhotos();
+  const have=PHOTOS.length;
+  $('#ph-empty').textContent = have ? '' : 'No photos yet. Tap above to take your first — line up with the faint overlay each time so shots match.';
+  $('#ph-gallery-wrap').style.display = have ? 'block' : 'none';
+  $('#compare').style.display = have>=2 ? 'block' : 'none';
+  $('#ph-count').textContent = have ? ('· '+have) : '';
+  const list=PHOTOS.filter(p=>phFilter==='all'||p.session===phFilter);
+  const tb=$('#thumbs'); tb.innerHTML='';
+  list.forEach(p=>{ const d=document.createElement('button'); d.className='thumb'; d.style.backgroundImage='url('+p.data+')';
+    d.title=p.date; d.onclick=()=>{ if(!cmpA||cmpA.id===p.id) cmpA=list[0]; cmpB=p; renderCompare(); markThumbs(); };
+    d.dataset.id=p.id; tb.appendChild(d); });
+  $$('.filterseg button').forEach(b=>b.classList.toggle('on', b.dataset.f===phFilter));
+  if(list.length>=2){ cmpA=list[0]; cmpB=list[list.length-1]; renderCompare(); markThumbs(); }
+}
+function markThumbs(){ $$('#thumbs .thumb').forEach(t=>t.classList.toggle('sel', cmpB&&t.dataset.id===cmpB.id)); }
+function renderCompare(){ if(!cmpA||!cmpB) return; const cmp=$('#cmp');
+  cmp.innerHTML='<img class="cmp-full" src="'+cmpB.data+'"><div class="cmp-top" id="cmp-top"><img id="cmp-top-img" src="'+cmpA.data+'"></div>';
+  const r=+$('#cmp-range').value; const w=cmp.clientWidth, h=cmp.clientHeight;
+  const ti=$('#cmp-top-img'); ti.style.width=w+'px'; ti.style.height=h+'px';
+  $('#cmp-top').style.width=r+'%';
+  $('#cmp-a').textContent='before · '+cmpA.date; $('#cmp-b').textContent='after · '+cmpB.date;
+}
+
+/* timelapse player (on-device slideshow) */
+let playTimer=null;
+function playTL(){ const list=PHOTOS.filter(p=>phFilter==='all'||p.session===phFilter); if(!list.length) return;
+  let i=0; $('#player').classList.add('on'); const img=$('#player-img'), cap=$('#player-cap');
+  const tick=()=>{ const p=list[i]; img.src=p.data;
+    cap.textContent=(i+1)+' / '+list.length+' · '+p.date+' · '+(p.session==='am'?'Morning':'Evening');
+    i++; if(i>=list.length){ clearInterval(playTimer); playTimer=null; } };
+  tick(); playTimer=setInterval(tick,450);
+}
+function closePlayer(){ if(playTimer){ clearInterval(playTimer); playTimer=null; } $('#player').classList.remove('on'); }
+
+function bindPhotos(){
+  $('#open-cam').onclick=openCam; $('#shoot').onclick=shoot; $('#cam-cancel').onclick=closeCam;
+  $('#cmp-range').oninput=()=>{ const t=$('#cmp-top'); if(t) t.style.width=$('#cmp-range').value+'%'; };
+  $$('.filterseg button').forEach(b=>b.onclick=()=>{ phFilter=b.dataset.f; renderPhotos(); });
+  $('#play').onclick=playTL; $('#player-close').onclick=closePlayer;
+  $('#player').onclick=e=>{ if(e.target.id==='player') closePlayer(); };
+}
 
 /* ---------- navigation ---------- */
 function go(v){ $$('.view').forEach(s=>s.classList.remove('on')); $('#v-'+v).classList.add('on');
   $$('nav button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
-  if(v==='today') renderToday(); if(v==='checkin') renderCheckin(); if(v==='trends') renderTrends(); if(v==='routine') renderRoutine();
+  if(v==='today') renderToday(); if(v==='checkin') renderCheckin(); if(v==='photos') renderPhotos();
+  if(v==='trends') renderTrends(); if(v==='routine') renderRoutine();
   try{ history.replaceState(null,'','#'+v); }catch(e){} window.scrollTo(0,0);
 }
 $$('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
@@ -546,8 +689,11 @@ $('#reset-today').onclick=()=>{ delete S.days[todayKey()]; delete S.override[tod
   $('#sheet').classList.remove('on'); renderToday(); renderTrends(); };
 
 /* ---------- boot ---------- */
-recomputePoints(); bindCheckin();
-const start=(location.hash||'#today').slice(1); go(['today','checkin','trends','routine'].includes(start)?start:'today');
+if(!S.firstUse){ S.firstUse=Date.now(); save(); }
+recomputePoints(); bindCheckin(); bindPhotos();
+const start=(location.hash||'#today').slice(1);
+go(['today','checkin','photos','trends','routine'].includes(start)?start:'today');
+loadPhotos().then(()=>{ if($('#v-today').classList.contains('on')) renderToday(); if($('#v-photos').classList.contains('on')) renderPhotos(); });
 if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </html>
