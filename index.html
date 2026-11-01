@@ -286,13 +286,28 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
     <ul class="rlist" id="r-am"></ul>
     <h2 class="sec">Evening</h2>
     <ul class="rlist" id="r-pm"></ul>
-    <p class="muted small" style="margin-top:14px">Toggle a product off if you've run out — it drops from the plan until you switch it back.
-      Deeper editing (adding products, add-ons) comes next.</p>
+    <p class="muted small" style="margin-top:10px">Toggle a product off to retire it (ran out / stopped) — it drops from the plan and from packing.</p>
+
+    <h2 class="sec">Your extra products</h2>
+    <ul class="rlist" id="r-custom"></ul>
+    <div class="card">
+      <input id="np-name" placeholder="New product name" style="width:100%;background:var(--surface2);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:11px;font:inherit">
+      <div class="filterseg" id="np-when" style="margin-top:8px"><button data-w="am" class="on">Morning</button><button data-w="pm">Evening</button><button data-w="both">Both</button></div>
+      <input id="np-note" placeholder="When to use (optional)" style="width:100%;margin-top:8px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:11px;font:inherit">
+      <button class="save" id="np-add" style="margin-top:10px">Add product</button>
+    </div>
   </section>
 
   <!-- PHOTOS -->
   <section class="view" id="v-photos">
     <h2 class="sec">Progress photos</h2>
+    <div id="photolock" style="display:none;text-align:center;padding:30px 0">
+      <div style="font-size:2rem">🔒</div>
+      <p class="muted">Photos are locked.</p>
+      <input id="pin-entry" type="password" inputmode="numeric" maxlength="8" placeholder="PIN"
+        style="width:150px;text-align:center;letter-spacing:6px;background:var(--surface2);border:1px solid var(--line);border-radius:10px;color:var(--ink);padding:12px;font:inherit">
+      <button class="save" id="pin-unlock" style="max-width:200px;margin:12px auto 0">Unlock</button>
+    </div>
     <div id="cam-wrap" class="card" style="display:none">
       <div class="cambox"><video id="cam" playsinline autoplay muted></video><div id="ghost"></div></div>
       <div class="camrow">
@@ -337,6 +352,8 @@ nav button.on .ic{filter:drop-shadow(0 0 10px rgba(127,188,198,.5))}
   <h3>Settings</h3>
   <div class="opt"><div style="flex:1">Location for sunset<br><span class="muted small">São Paulo (−3) · drives Morning/Evening</span></div></div>
   <div class="opt"><div style="flex:1">Reset today's check-offs</div><button class="linkish" id="reset-today">Reset</button></div>
+  <div class="opt"><div style="flex:1">Recovery length</div><button class="linkish" id="rec-len">3 days</button></div>
+  <div class="opt"><div style="flex:1">Lock Photos tab <span class="muted small" id="pin-state"></span></div><button class="linkish" id="pin-set">Set PIN</button></div>
   <div class="opt" style="flex-direction:column;align-items:stretch;gap:8px">
     <div>Back up to Saúde DB <span class="muted small">— paste the web-app URL</span></div>
     <input id="sync-url" type="url" inputmode="url" placeholder="https://script.google.com/…/exec"
@@ -427,7 +444,7 @@ const PRODUCTS = ['Freshen Cleansing Foam','The Ordinary Glucoside Foaming Clean
 const LS = 'skindiary.v1';
 let S = load();
 function load(){ try{ return JSON.parse(localStorage.getItem(LS)) || fresh(); }catch(e){ return fresh(); } }
-function fresh(){ return {days:{}, checkins:{}, points:0, week:null, off:{}, override:{}, trip:null, recovery:null, syncUrl:'', deviceId:null, firstUse:null, lastSync:0, photoSynced:{}}; }
+function fresh(){ return {days:{}, checkins:{}, points:0, week:null, off:{}, override:{}, trip:null, recovery:null, recoveryDays:3, customProducts:[], photoPin:'', syncUrl:'', deviceId:null, firstUse:null, lastSync:0, photoSynced:{}}; }
 function rawSave(){ try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){} }
 function save(){ rawSave(); scheduleSync(); }
 
@@ -527,12 +544,15 @@ function sessionSteps(sess){
     }
     steps=out;
   }
+  (S.customProducts||[]).forEach(c=>{ if(c.when!==sess && c.when!=='both') return; if(isOff(c.name)) return;
+    if(travelActive() && !packed(c.name)) return;
+    steps.push({id:'cust-'+c.id, role:'Extra', prod:c.name, custom:true, note:c.note||''}); });
   if(recoveryActive()){ const gentle=['am-clean','am-moist','am-spf','pm-clean','pm-moist'];
     steps = steps.filter(s=>gentle.includes(s.id)).map(s=>{ const st=Object.assign({},s); st.recovery=true; st.adds=[]; return st; }); }
   return steps;
 }
-function allApplicable(){ // every applicable step id across both sessions today (for full ring)
-  return [...sessionSteps('am'), ...sessionSteps('pm')].map(s=>s.id);
+function allApplicable(){ // every applicable step id across both sessions today (for full ring; extras don't count)
+  return [...sessionSteps('am'), ...sessionSteps('pm')].filter(s=>!s.custom).map(s=>s.id);
 }
 function doneSet(sess){ const d=S.days[todayKey()]||{}; return d[sess]||{}; }
 function isDone(sess,id){ return !!doneSet(sess)[id]; }
@@ -587,7 +607,7 @@ function renderToday(){
     bfh+='<div class="banner">Morning not logged yet. <button id="go-am">Log Morning</button></div>'; }
   conflictWarnings().forEach(m=>{ bfh+='<div class="banner" style="background:var(--warn-soft);border-color:#4a3a1c">⚠ '+m+'</div>'; });
   bf.innerHTML=bfh;
-  const sr=$('#start-rec'); if(sr) sr.onclick=()=>{ S.recovery={start:todayKey(),days:3}; save(); renderToday(); };
+  const sr=$('#start-rec'); if(sr) sr.onclick=()=>{ S.recovery={start:todayKey(),days:S.recoveryDays||3}; save(); renderToday(); };
   const er=$('#end-rec'); if(er) er.onclick=()=>{ S.recovery=null; save(); renderToday(); };
   const gam=$('#go-am'); if(gam) gam.onclick=()=>{ S.override[k]='am'; save(); renderToday(); };
   // steps
@@ -635,7 +655,23 @@ function renderRoutine(){
     const tg=li.querySelector('.toggle'); tg.onclick=()=>{ if(!s.prod) return; if(S.off[s.prod]) delete S.off[s.prod]; else S.off[s.prod]=true; save(); renderRoutine(); renderToday(); };
     ul.appendChild(li); }); };
   fill($('#r-am'), ROUTINE.am); fill($('#r-pm'), ROUTINE.pm);
+  // custom products
+  const cu=$('#r-custom'); cu.innerHTML='';
+  (S.customProducts||[]).forEach(c=>{ const li=document.createElement('li');
+    li.innerHTML='<div class="p">'+c.name+'<small>'+(c.when==='both'?'AM + PM':c.when.toUpperCase())+(c.note?' · '+c.note:'')+'</small></div>'+
+      '<div class="toggle'+(isOff(c.name)?'':' on')+'" role="switch"></div>'+
+      '<button style="color:var(--danger);font-weight:700;margin-left:10px;font-size:1.1rem" data-del="1">✕</button>';
+    li.querySelector('.toggle').onclick=()=>{ if(S.off[c.name]) delete S.off[c.name]; else S.off[c.name]=true; save(); renderRoutine(); renderToday(); };
+    li.querySelector('[data-del]').onclick=()=>{ S.customProducts=S.customProducts.filter(x=>x.id!==c.id); delete S.off[c.name]; save(); renderRoutine(); renderToday(); };
+    cu.appendChild(li); });
+  if(!(S.customProducts||[]).length){ const li=document.createElement('li'); li.style.color='var(--faint)'; li.textContent='None yet — add one below.'; cu.appendChild(li); }
+  $$('#np-when button').forEach(b=>b.onclick=()=>{ $$('#np-when button').forEach(x=>x.classList.remove('on')); b.classList.add('on'); });
+  $('#np-add').onclick=()=>{ const name=$('#np-name').value.trim(); if(!name) return;
+    const onb=$('#np-when button.on'); const when=onb?onb.dataset.w:'am'; const note=$('#np-note').value.trim();
+    S.customProducts=S.customProducts||[]; S.customProducts.push({id:'c'+Date.now(), name:name, when:when, note:note});
+    $('#np-name').value=''; $('#np-note').value=''; save(); renderRoutine(); renderToday(); };
 }
+function packCatalog(){ return [...PRODUCTS, ...(S.customProducts||[]).map(c=>c.name)].filter(n=>!isOff(n)); }
 
 /* ---------- check-in ---------- */
 let ciDraft = null, ciZone = null;
@@ -730,8 +766,13 @@ async function shoot(){ const v=$('#cam'); if(!v.videoWidth){ return; }
 }
 
 /* gallery + before/after */
-let phFilter='all', cmpA=null, cmpB=null;
-async function renderPhotos(){ if(!PH_LOADED) await loadPhotos();
+let phFilter='all', cmpA=null, cmpB=null, photoUnlocked=false;
+async function renderPhotos(){
+  const locked = !!S.photoPin && !photoUnlocked;
+  $('#photolock').style.display = locked?'block':'none';
+  $('#open-cam').style.display = locked?'none':(camStream?'none':'');
+  if(locked){ $('#ph-gallery-wrap').style.display='none'; $('#compare').style.display='none'; $('#ph-empty').textContent=''; return; }
+  if(!PH_LOADED) await loadPhotos();
   const have=PHOTOS.length;
   $('#ph-empty').textContent = have ? '' : 'No photos yet. Tap above to take your first — line up with the faint overlay each time so shots match.';
   $('#ph-gallery-wrap').style.display = have ? 'block' : 'none';
@@ -783,7 +824,7 @@ function go(v){ $$('.view').forEach(s=>s.classList.remove('on')); $('#v-'+v).cla
 $$('nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
 $('#seg-am').onclick=()=>{ S.override[todayKey()]='am'; save(); renderToday(); };
 $('#seg-pm').onclick=()=>{ S.override[todayKey()]='pm'; save(); renderToday(); };
-$('#gear').onclick=()=>{ $('#sync-url').value=S.syncUrl||''; updateTripSum();
+$('#gear').onclick=()=>{ $('#sync-url').value=S.syncUrl||''; updateTripSum(); updateRecLen(); updatePinUI();
   syncStatus(S.lastSync?('Last synced '+new Date(S.lastSync).toLocaleString()):(S.syncUrl?'Connected':'Not connected'));
   $('#sheet').classList.add('on'); };
 $('#sync-save').onclick=()=>{ const v=$('#sync-url').value.trim(); S.syncUrl=v; rawSave();
@@ -795,7 +836,7 @@ $('#sheet').onclick=e=>{ if(e.target.id==='sheet') $('#sheet').classList.remove(
 /* travel mode */
 function updateTripSum(){ const el=$('#trip-sum'); if(el) el.textContent=(S.trip&&S.trip.start)?('· '+S.trip.start+' → '+S.trip.end):''; }
 function renderPackList(){ const pl=$('#packlist'); pl.innerHTML=''; const pk=(S.trip&&S.trip.packed)||{};
-  PRODUCTS.forEach(p=>{ const row=document.createElement('label'); row.className='opt'; row.style.padding='9px 0'; row.style.cursor='pointer';
+  packCatalog().forEach(p=>{ const row=document.createElement('label'); row.className='opt'; row.style.padding='9px 0'; row.style.cursor='pointer';
     row.innerHTML='<div style="flex:1">'+p+'</div><input type="checkbox" '+(pk[p]?'checked':'')+' data-p="'+p+'" style="width:22px;height:22px;accent-color:var(--teal)">';
     pl.appendChild(row); }); }
 $('#open-travel').onclick=()=>{ const t=S.trip||{}; $('#trip-start').value=t.start||''; $('#trip-end').value=t.end||'';
@@ -807,6 +848,14 @@ $('#trip-save').onclick=()=>{ const start=$('#trip-start').value, end=$('#trip-e
   const packed={}; $$('#packlist input').forEach(c=>{ if(c.checked) packed[c.dataset.p]=true; });
   S.trip={start,end,packed}; save(); updateTripSum(); $('#travelsheet').classList.remove('on'); renderToday(); };
 $('#trip-clear').onclick=()=>{ S.trip=null; save(); updateTripSum(); renderPackList(); $('#travelsheet').classList.remove('on'); renderToday(); };
+/* recovery length */
+function updateRecLen(){ const b=$('#rec-len'); if(b) b.textContent=(S.recoveryDays||3)+' days'; }
+$('#rec-len').onclick=()=>{ const opts=[2,3,5,7]; const i=opts.indexOf(S.recoveryDays||3); S.recoveryDays=opts[(i+1)%opts.length]; save(); updateRecLen(); };
+/* photos PIN */
+function updatePinUI(){ const set=!!S.photoPin, st=$('#pin-state'), b=$('#pin-set'); if(st) st.textContent=set?'· on':'· off'; if(b) b.textContent=set?'Remove':'Set PIN'; }
+$('#pin-set').onclick=()=>{ if(S.photoPin){ if(confirm('Remove the Photos PIN?')){ S.photoPin=''; photoUnlocked=false; save(); updatePinUI(); } }
+  else { const p=prompt('Set a PIN for the Photos tab (3–8 digits):'); if(p===null) return; if(/^\d{3,8}$/.test(p)){ S.photoPin=p; save(); updatePinUI(); } else alert('Use 3–8 digits.'); } };
+$('#pin-unlock').onclick=()=>{ if($('#pin-entry').value===S.photoPin){ photoUnlocked=true; $('#pin-entry').value=''; renderPhotos(); } else { $('#pin-entry').value=''; $('#pin-entry').placeholder='Wrong PIN'; } };
 $('#reset-today').onclick=()=>{ delete S.days[todayKey()]; delete S.override[todayKey()]; recomputePoints(); save();
   $('#sheet').classList.remove('on'); renderToday(); renderTrends(); };
 
